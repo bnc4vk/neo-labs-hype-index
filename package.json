@@ -1,0 +1,15 @@
+{
+  "name": "neo-labs-hype-index",
+  "private": true,
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "lint": "pnpm --filter web lint",
+    "test": "pnpm --filter ingest test",
+    "ingest": "pnpm --filter ingest ingest",
+    "prisma:generate": "pnpm --filter db prisma generate",
+    "prisma:migrate": "pnpm --filter db prisma migrate dev",
+    "prisma:studio": "pnpm --filter db prisma studio"
+  }
+}

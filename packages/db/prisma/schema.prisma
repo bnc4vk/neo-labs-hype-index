@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id               String    @id @default(uuid()) @db.Uuid
+  name             String
+  canonical_domain String?   @unique
+  website_url      String?
+  description      String?
+  focus            String?
+  employee_count   Int?
+  known_revenue    String?
+  status           String    @default("active")
+  founded_year     Int?      @db.SmallInt
+  hq_location      String?
+  aliases          String[]  @default([])
+  last_verified_at DateTime? @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+
+  people          Person[]
+  funding_rounds  FundingRound[]
+  company_sources CompanySource[]
+
+  @@index([status])
+  @@index([employee_count])
+  @@index([founded_year])
+  @@index([last_verified_at])
+  @@map("companies")
+}
+
+model Person {
+  id                String   @id @default(uuid()) @db.Uuid
+  company_id        String   @db.Uuid
+  name              String
+  role              String?
+  is_founder        Boolean  @default(false)
+  profile_url       String?
+  primary_source_id String?  @db.Uuid
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  company        Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  primary_source Source? @relation("people_primary", fields: [primary_source_id], references: [id])
+
+  @@map("people")
+}
+
+model FundingRound {
+  id            String    @id @default(uuid()) @db.Uuid
+  company_id    String    @db.Uuid
+  round_type    String?
+  amount_usd    BigInt?
+  valuation_usd BigInt?
+  announced_at  DateTime? @db.Date
+  investors     String[]  @default([])
+  source_id     String?   @db.Uuid
+  updated_at    DateTime  @default(now()) @db.Timestamptz(6)
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  source  Source? @relation(fields: [source_id], references: [id])
+
+  @@map("funding_rounds")
+}
+
+model Source {
+  id           String    @id @default(uuid()) @db.Uuid
+  url          String    @unique
+  title        String?
+  publisher    String?
+  published_at DateTime? @db.Date
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  funding_rounds  FundingRound[]
+  people_primary  Person[] @relation("people_primary")
+  company_sources CompanySource[]
+
+  @@map("sources")
+}
+
+model CompanySource {
+  id          String   @id @default(uuid()) @db.Uuid
+  company_id  String   @db.Uuid
+  source_id   String   @db.Uuid
+  source_kind String
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  source  Source  @relation(fields: [source_id], references: [id], onDelete: Cascade)
+
+  @@unique([company_id, source_id, source_kind])
+  @@index([company_id])
+  @@index([company_id, source_kind])
+  @@index([source_id])
+  @@map("company_sources")
+}
