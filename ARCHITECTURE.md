@@ -9,7 +9,7 @@
 - Scheduling: GitHub Actions weekly
 
 ## App shape
-- `apps/web`: static site (index.html + app.js + config.js + style.css)
+- `docs`: static site (index.html + app.js + config.js + style.css)
 - `packages/db`: Prisma schema + DB client
 - `packages/ingest`: ingestion script + source adapters
 

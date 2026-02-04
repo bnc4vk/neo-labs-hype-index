@@ -8,8 +8,6 @@ importers:
 
   .: {}
 
-  apps/web: {}
-
   packages/db:
     dependencies:
       '@prisma/client':

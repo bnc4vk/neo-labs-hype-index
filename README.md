@@ -39,7 +39,7 @@ pnpm ingest:refresh
 
 6. Open the webapp
 
-Open `apps/web/index.html` directly in a browser, or serve the folder with a static server.
+Open `docs/index.html` directly in a browser, or serve the folder with a static server.
 
 ## Environment variables
 - `DATABASE_URL`: Supabase Postgres connection string (prefer pooler for CI).
@@ -65,8 +65,8 @@ Open `apps/web/index.html` directly in a browser, or serve the folder with a sta
 - Other fields are only filled when missing.
 
 ## Static webapp
-The web frontend is a static HTML/CSS/JS bundle under `apps/web`. It reads from Supabase REST
-API using the publishable key in `apps/web/config.js`. No server runtime is required.
+The web frontend is a static HTML/CSS/JS bundle under `docs`. It reads from Supabase REST
+API using the publishable key in `docs/config.js`. No server runtime is required.
 
 ### Seed bootstrap (recommended once)
 To initialize Supabase with the curated seed list:
