@@ -23,16 +23,3 @@ export const pickDefined = <T extends Record<string, unknown>>(input: T) => {
   const entries = Object.entries(input).filter(([, value]) => value !== undefined);
   return Object.fromEntries(entries) as Partial<T>;
 };
-
-export const maxDate = (a?: Date | null, b?: Date | null) => {
-  if (!a && !b) {
-    return undefined;
-  }
-  if (!a) {
-    return b ?? undefined;
-  }
-  if (!b) {
-    return a;
-  }
-  return a > b ? a : b;
-};

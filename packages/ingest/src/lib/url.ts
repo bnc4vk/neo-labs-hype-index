@@ -76,39 +76,3 @@ export const getHostname = (input: string): string | null => {
     return null;
   }
 };
-
-const isDomainOrSubdomain = (host: string, domain: string) =>
-  host === domain || host.endsWith(`.${domain}`);
-
-export const isAllowedDomain = (host: string, allowlist: Set<string>) => {
-  for (const domain of allowlist) {
-    if (isDomainOrSubdomain(host, domain)) {
-      return true;
-    }
-  }
-  return false;
-};
-
-export const isDeniedDomain = (host: string, denylist: Set<string>) => {
-  for (const domain of denylist) {
-    if (isDomainOrSubdomain(host, domain)) {
-      return true;
-    }
-  }
-  return false;
-};
-
-export const isFetchAllowed = (
-  inputUrl: string,
-  allowlist: Set<string>,
-  denylist: Set<string>,
-) => {
-  const host = getHostname(inputUrl);
-  if (!host) {
-    return false;
-  }
-  if (isDeniedDomain(host, denylist)) {
-    return false;
-  }
-  return isAllowedDomain(host, allowlist);
-};

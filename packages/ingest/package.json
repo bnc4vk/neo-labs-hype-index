@@ -8,14 +8,14 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "ingest": "node --import tsx src/index.ts",
+    "ingest": "node --import tsx src/index.ts refresh",
+    "ingest:bootstrap": "node --import tsx src/index.ts bootstrap",
+    "ingest:refresh": "node --import tsx src/index.ts refresh",
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@neolabs/db": "workspace:*",
-    "cheerio": "^1.0.0-rc.12",
-    "rss-parser": "^3.13.0"
+    "@neolabs/db": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",

@@ -1,18 +1,8 @@
 import { randomUUID } from "crypto";
-import { maxDate, mergeAliases, normalizeName } from "../lib/normalize";
+import { mergeAliases, normalizeName } from "../lib/normalize";
 import { normalizeUrl } from "../lib/url";
-import type {
-  IngestCompany,
-  IngestFundingRound,
-  IngestPerson,
-  IngestSource,
-} from "../lib/types";
-import type {
-  IngestRepository,
-  KnownCompany,
-  UpsertCompanyResult,
-  UpsertSourceResult,
-} from "./types";
+import type { RefreshUpdate, SeedCompany, SourceInput } from "../lib/types";
+import type { IngestRepository, KnownCompany, UpsertCompanyResult, UpsertSourceResult } from "./types";
 
 export type MemoryCompany = {
   id: string;
@@ -23,7 +13,7 @@ export type MemoryCompany = {
   focus?: string | null;
   employee_count?: number | null;
   known_revenue?: string | null;
-  status: string;
+  status?: string | null;
   founded_year?: number | null;
   hq_location?: string | null;
   aliases: string[];
@@ -40,29 +30,6 @@ export type MemorySource = {
   updated_at: Date;
 };
 
-export type MemoryPerson = {
-  id: string;
-  company_id: string;
-  name: string;
-  role?: string | null;
-  is_founder: boolean;
-  profile_url?: string | null;
-  primary_source_id?: string | null;
-  updated_at: Date;
-};
-
-export type MemoryFundingRound = {
-  id: string;
-  company_id: string;
-  round_type?: string | null;
-  amount_usd?: bigint | null;
-  valuation_usd?: bigint | null;
-  announced_at?: Date | null;
-  investors: string[];
-  source_id?: string | null;
-  updated_at: Date;
-};
-
 export type MemoryCompanySource = {
   id: string;
   company_id: string;
@@ -74,37 +41,102 @@ export type MemoryCompanySource = {
 export class MemoryRepository implements IngestRepository {
   companies: MemoryCompany[] = [];
   sources: MemorySource[] = [];
-  people: MemoryPerson[] = [];
-  fundingRounds: MemoryFundingRound[] = [];
   companySources: MemoryCompanySource[] = [];
 
   async listCompanies(): Promise<KnownCompany[]> {
     return [...this.companies]
-      .sort((a, b) => {
-        const aTime = a.last_verified_at?.getTime() ?? 0;
-        const bTime = b.last_verified_at?.getTime() ?? 0;
-        return aTime - bTime;
-      })
+      .sort((a, b) => a.name.localeCompare(b.name))
       .map((company) => ({
         id: company.id,
         name: company.name,
         canonical_domain: company.canonical_domain ?? null,
         website_url: company.website_url ?? null,
+        description: company.description ?? null,
+        focus: company.focus ?? null,
+        employee_count: company.employee_count ?? null,
+        known_revenue: company.known_revenue ?? null,
+        status: company.status ?? null,
+        founded_year: company.founded_year ?? null,
+        hq_location: company.hq_location ?? null,
         aliases: company.aliases,
         last_verified_at: company.last_verified_at ?? null,
       }));
   }
 
-  async upsertSource(source: IngestSource): Promise<UpsertSourceResult> {
+  async upsertSeedCompany(company: SeedCompany): Promise<UpsertCompanyResult> {
+    const normalizedName = normalizeName(company.name);
+    const aliasList = mergeAliases(company.alias ? [company.alias] : [], normalizedName ? [normalizedName] : []);
+    const existing = normalizedName
+      ? this.companies.find(
+        (item) => item.aliases.includes(normalizedName) || item.name.toLowerCase() === company.name.toLowerCase(),
+      )
+      : this.companies.find((item) => item.name.toLowerCase() === company.name.toLowerCase());
+
+    if (existing) {
+      existing.aliases = mergeAliases(existing.aliases, aliasList);
+      existing.updated_at = new Date();
+      return { record: { id: existing.id }, created: false };
+    }
+
+    const record: MemoryCompany = {
+      id: randomUUID(),
+      name: company.name,
+      aliases: aliasList,
+      status: "active",
+      updated_at: new Date(),
+    };
+    this.companies.push(record);
+    return { record: { id: record.id }, created: true };
+  }
+
+  async updateCompanyFromRefresh(companyId: string, update: RefreshUpdate): Promise<void> {
+    const company = this.companies.find((item) => item.id === companyId);
+    if (!company) {
+      return;
+    }
+
+    if (update.websiteUrl !== undefined) {
+      company.website_url = update.websiteUrl ?? null;
+    }
+    if (update.canonicalDomain !== undefined) {
+      company.canonical_domain = update.canonicalDomain ?? null;
+    }
+    if (update.description !== undefined) {
+      company.description = update.description ?? null;
+    }
+    if (update.focus !== undefined) {
+      company.focus = update.focus ?? null;
+    }
+    if (update.employeeCount !== undefined) {
+      company.employee_count = update.employeeCount ?? null;
+    }
+    if (update.knownRevenue !== undefined) {
+      company.known_revenue = update.knownRevenue ?? null;
+    }
+    if (update.status !== undefined) {
+      company.status = update.status ?? null;
+    }
+    if (update.foundedYear !== undefined) {
+      company.founded_year = update.foundedYear ?? null;
+    }
+    if (update.hqLocation !== undefined) {
+      company.hq_location = update.hqLocation ?? null;
+    }
+    if (update.lastVerifiedAt !== undefined) {
+      company.last_verified_at = update.lastVerifiedAt ?? null;
+    }
+
+    company.updated_at = new Date();
+  }
+
+  async upsertSource(source: SourceInput): Promise<UpsertSourceResult> {
     const normalizedUrl = normalizeUrl(source.url) ?? source.url;
     const existing = this.sources.find((item) => item.url === normalizedUrl);
-    const now = new Date();
-
     if (existing) {
       existing.title = existing.title ?? source.title ?? null;
       existing.publisher = existing.publisher ?? source.publisher ?? null;
       existing.published_at = existing.published_at ?? source.publishedAt ?? null;
-      existing.updated_at = now;
+      existing.updated_at = new Date();
       return { record: { id: existing.id, url: existing.url }, created: false };
     }
 
@@ -114,84 +146,13 @@ export class MemoryRepository implements IngestRepository {
       title: source.title ?? null,
       publisher: source.publisher ?? null,
       published_at: source.publishedAt ?? null,
-      updated_at: now,
+      updated_at: new Date(),
     };
-
     this.sources.push(record);
     return { record: { id: record.id, url: record.url }, created: true };
   }
 
-  async upsertCompany(company: IngestCompany): Promise<UpsertCompanyResult> {
-    const normalizedName = normalizeName(company.name);
-    const now = new Date();
-    const aliases = mergeAliases(company.aliases ?? [], normalizedName ? [normalizedName] : []);
-
-    let existing = company.canonicalDomain
-      ? this.companies.find((item) => item.canonical_domain === company.canonicalDomain)
-      : undefined;
-
-    if (!existing && normalizedName) {
-      existing = this.companies.find((item) => item.aliases.includes(normalizedName));
-    }
-
-    if (existing) {
-      existing.website_url = existing.website_url ?? company.websiteUrl ?? null;
-      existing.description = existing.description ?? company.description ?? null;
-      existing.focus = existing.focus ?? company.focus ?? null;
-      existing.employee_count = existing.employee_count ?? company.employeeCount ?? null;
-      existing.known_revenue = existing.known_revenue ?? company.knownRevenue ?? null;
-      existing.status = existing.status ?? company.status ?? "active";
-      existing.founded_year = existing.founded_year ?? company.foundedYear ?? null;
-      existing.hq_location = existing.hq_location ?? company.hqLocation ?? null;
-      existing.aliases = mergeAliases(existing.aliases, aliases);
-      existing.last_verified_at = maxDate(existing.last_verified_at ?? null, company.lastVerifiedAt ?? null);
-      existing.updated_at = now;
-
-      return {
-        record: {
-          id: existing.id,
-          canonical_domain: existing.canonical_domain ?? null,
-          last_verified_at: existing.last_verified_at ?? null,
-          aliases: existing.aliases,
-        },
-        created: false,
-      };
-    }
-
-    const record: MemoryCompany = {
-      id: randomUUID(),
-      name: company.name,
-      canonical_domain: company.canonicalDomain ?? null,
-      website_url: company.websiteUrl ?? null,
-      description: company.description ?? null,
-      focus: company.focus ?? null,
-      employee_count: company.employeeCount ?? null,
-      known_revenue: company.knownRevenue ?? null,
-      status: company.status ?? "active",
-      founded_year: company.foundedYear ?? null,
-      hq_location: company.hqLocation ?? null,
-      aliases,
-      last_verified_at: company.lastVerifiedAt ?? null,
-      updated_at: now,
-    };
-
-    this.companies.push(record);
-    return {
-      record: {
-        id: record.id,
-        canonical_domain: record.canonical_domain ?? null,
-        last_verified_at: record.last_verified_at ?? null,
-        aliases: record.aliases,
-      },
-      created: true,
-    };
-  }
-
-  async linkCompanySource(
-    companyId: string,
-    sourceId: string,
-    sourceKind: string,
-  ): Promise<boolean> {
+  async linkCompanySource(companyId: string, sourceId: string, sourceKind: string): Promise<void> {
     const existing = this.companySources.find(
       (item) =>
         item.company_id === companyId &&
@@ -201,7 +162,7 @@ export class MemoryRepository implements IngestRepository {
 
     if (existing) {
       existing.updated_at = new Date();
-      return true;
+      return;
     }
 
     this.companySources.push({
@@ -211,117 +172,5 @@ export class MemoryRepository implements IngestRepository {
       source_kind: sourceKind,
       updated_at: new Date(),
     });
-
-    return true;
-  }
-
-  async upsertPeople(
-    companyId: string,
-    people: IngestPerson[],
-    sourceMap: Map<string, string>,
-  ): Promise<number> {
-    let upserted = 0;
-
-    for (const person of people) {
-      const normalizedName = normalizeName(person.name);
-      if (!normalizedName) {
-        continue;
-      }
-
-      const primarySourceId = person.primarySourceUrl
-        ? sourceMap.get(normalizeUrl(person.primarySourceUrl) ?? person.primarySourceUrl) ?? null
-        : null;
-
-      const existing = this.people.find(
-        (item) => item.company_id === companyId && normalizeName(item.name) === normalizedName,
-      );
-
-      if (existing) {
-        existing.role = existing.role ?? person.role ?? null;
-        existing.is_founder = existing.is_founder ?? person.isFounder ?? false;
-        existing.profile_url = existing.profile_url ?? person.profileUrl ?? null;
-        existing.primary_source_id = existing.primary_source_id ?? primarySourceId ?? null;
-        existing.updated_at = new Date();
-      } else {
-        this.people.push({
-          id: randomUUID(),
-          company_id: companyId,
-          name: person.name,
-          role: person.role ?? null,
-          is_founder: person.isFounder ?? false,
-          profile_url: person.profileUrl ?? null,
-          primary_source_id: primarySourceId ?? null,
-          updated_at: new Date(),
-        });
-      }
-
-      upserted += 1;
-    }
-
-    return upserted;
-  }
-
-  async upsertFundingRounds(
-    companyId: string,
-    rounds: IngestFundingRound[],
-    sourceMap: Map<string, string>,
-  ): Promise<number> {
-    let upserted = 0;
-
-    for (const round of rounds) {
-      const announcedAt = round.announcedAt ?? null;
-      const roundType = round.roundType ?? null;
-      const amountUsd = round.amountUsd !== null && round.amountUsd !== undefined
-        ? BigInt(round.amountUsd)
-        : null;
-      const valuationUsd = round.valuationUsd !== null && round.valuationUsd !== undefined
-        ? BigInt(round.valuationUsd)
-        : null;
-
-      const existing = this.fundingRounds.find((item) => {
-        if (announcedAt && item.announced_at) {
-          return (
-            item.company_id === companyId &&
-            item.round_type === roundType &&
-            item.announced_at.toDateString() === announcedAt.toDateString()
-          );
-        }
-
-        return (
-          item.company_id === companyId &&
-          item.round_type === roundType &&
-          item.amount_usd === amountUsd &&
-          item.valuation_usd === valuationUsd
-        );
-      });
-
-      const sourceId = round.sourceUrl
-        ? sourceMap.get(normalizeUrl(round.sourceUrl) ?? round.sourceUrl) ?? null
-        : null;
-
-      if (existing) {
-        existing.amount_usd = existing.amount_usd ?? amountUsd ?? null;
-        existing.valuation_usd = existing.valuation_usd ?? valuationUsd ?? null;
-        existing.investors = existing.investors.length ? existing.investors : round.investors ?? [];
-        existing.source_id = existing.source_id ?? sourceId ?? null;
-        existing.updated_at = new Date();
-      } else {
-        this.fundingRounds.push({
-          id: randomUUID(),
-          company_id: companyId,
-          round_type: roundType,
-          amount_usd: amountUsd,
-          valuation_usd: valuationUsd,
-          announced_at: announcedAt,
-          investors: round.investors ?? [],
-          source_id: sourceId ?? null,
-          updated_at: new Date(),
-        });
-      }
-
-      upserted += 1;
-    }
-
-    return upserted;
   }
 }

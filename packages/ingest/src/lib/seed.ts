@@ -1,19 +1,15 @@
 import { readFileSync } from "fs";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
+import { resolve } from "path";
 
-export const parseSeedList = (contents: string) =>
+export const parseSeedList = (contents: string): string[] =>
   contents
-    .split(/\r?\n/)
+    .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("#"));
+    .filter((line) => line.length > 0)
+    .filter((line) => !line.startsWith("#"));
 
-const getDefaultSeedPath = () => {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  return resolve(currentDir, "..", "..", "benchmarks", "seed-universe.txt");
-};
-
-export const loadSeedUniverse = (filePath = getDefaultSeedPath()) => {
-  const contents = readFileSync(filePath, "utf-8");
+export const loadSeedList = (filePath?: string): string[] => {
+  const resolved = filePath ?? resolve(process.cwd(), "seed-list.txt");
+  const contents = readFileSync(resolved, "utf-8");
   return parseSeedList(contents);
 };

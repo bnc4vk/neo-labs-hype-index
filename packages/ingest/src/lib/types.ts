@@ -1,77 +1,45 @@
-export type SourceKind =
-  | "overview"
-  | "employee_count"
-  | "founders"
-  | "focus"
-  | "revenue"
-  | "funding_summary"
-  | "other";
+export type SeedCompany = {
+  name: string;
+  alias?: string | null;
+};
 
-export type SourceOrigin =
-  | "rss"
-  | "discovery"
-  | "search"
-  | "seed_search"
-  | "allowlist_followup";
-
-export type SourcePipeline = "known_updates" | "new_discovery" | "seed_bootstrap";
-
-export type IngestSource = {
+export type SourceInput = {
   url: string;
   title?: string | null;
   publisher?: string | null;
   publishedAt?: Date | null;
-  snippet?: string | null;
-  sourceKind?: SourceKind;
-  origin?: SourceOrigin;
-  pipeline?: SourcePipeline;
-  query?: string | null;
 };
 
-export type IngestCompany = {
-  name: string;
-  canonicalDomain?: string | null;
+export type RefreshUpdate = {
   websiteUrl?: string | null;
+  canonicalDomain?: string | null;
   description?: string | null;
   focus?: string | null;
   employeeCount?: number | null;
   knownRevenue?: string | null;
-  status?: string | null;
+  status?: "active" | "stealth" | "inactive" | "unknown" | null;
   foundedYear?: number | null;
   hqLocation?: string | null;
-  aliases?: string[];
   lastVerifiedAt?: Date | null;
 };
 
-export type IngestPerson = {
-  name: string;
-  role?: string | null;
-  isFounder?: boolean | null;
-  profileUrl?: string | null;
-  primarySourceUrl?: string | null;
+export type ParallelSource = {
+  url: string;
+  title?: string | null;
+  publisher?: string | null;
+  published_at?: string | null;
 };
 
-export type IngestFundingRound = {
-  roundType?: string | null;
-  amountUsd?: bigint | number | null;
-  valuationUsd?: bigint | number | null;
-  announcedAt?: Date | null;
-  investors?: string[] | null;
-  sourceUrl?: string | null;
-};
-
-export type IngestCandidate = {
-  company: IngestCompany;
-  sources: IngestSource[];
-  people?: IngestPerson[];
-  fundingRounds?: IngestFundingRound[];
-};
-
-export type IngestSummary = {
-  companiesCreated: number;
-  companiesUpdated: number;
-  sourcesUpserted: number;
-  companySourcesLinked: number;
-  peopleUpserted: number;
-  fundingRoundsUpserted: number;
+export type ParallelCompanyOutput = {
+  company_name?: string | null;
+  website_url?: string | null;
+  canonical_domain?: string | null;
+  description?: string | null;
+  focus?: string | null;
+  employee_count?: number | null;
+  known_revenue?: string | null;
+  status?: string | null;
+  founded_year?: number | null;
+  hq_location?: string | null;
+  sources?: ParallelSource[] | null;
 };

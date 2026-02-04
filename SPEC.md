@@ -18,7 +18,7 @@ No additional pages are required for MVP unless needed for debugging (e.g., a hi
 
 ## Non-goals (MVP)
 - No user accounts / auth.
-- No manual data entry and no seed file.
+- No manual data entry beyond the curated seed list used for bootstrap.
 - No claim/evidence model beyond company_sources.
 - No ingestion run logs stored in DB (can add later).
 

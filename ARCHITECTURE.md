@@ -16,15 +16,14 @@
 (Exact monorepo layout is optional; a single Next.js repo with `/prisma` and `/scripts` is also acceptable. Prefer the simplest structure that keeps concerns separated.)
 
 ## Data flow
-1. Weekly GitHub Action runs ingestion script.
-2. Script discovers sources (RSS first, then search API fallback, then scraping where permitted).
-3. Script normalizes entities and upserts:
+1. One-time bootstrap script inserts the curated seed list into `companies`.
+2. Weekly GitHub Action runs refresh script.
+3. Script calls Parallel Task API per company to retrieve best‑effort structured fields + source URLs.
+4. Script upserts:
    - companies
-   - people
-   - funding_rounds
    - sources
    - company_sources
-4. Webapp reads from DB and renders homepage table.
+5. Webapp reads from DB and renders homepage table.
 
 ## Key constraints
 - Idempotent ingestion (safe to rerun)

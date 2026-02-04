@@ -1,7 +1,6 @@
-# Seed universe for discovery experiments (NOT the benchmark).
-# This is a superset: known-neolabs + additional in-scope candidates.
+# Seed list for bootstrap (one company name per line).
+# Order does not matter.
 
-# Benchmark (oldest -> newest)
 Periodic Labs
 World Labs
 Safe Superintelligence
@@ -13,8 +12,6 @@ Axiom Math
 Flapping Airplanes
 Logical Intelligence
 Unconventional AI
-
-# Additional in-scope candidates
 Reflection AI
 Reka AI
 Physical Intelligence

@@ -1,23 +1,17 @@
-import type {
-  IngestCompany,
-  IngestFundingRound,
-  IngestPerson,
-  IngestSource,
-  IngestSummary,
-} from "../lib/types";
-
-export type CompanyRecord = {
-  id: string;
-  canonical_domain?: string | null;
-  last_verified_at?: Date | null;
-  aliases?: string[];
-};
+import type { RefreshUpdate, SeedCompany, SourceInput } from "../lib/types";
 
 export type KnownCompany = {
   id: string;
   name: string;
   canonical_domain?: string | null;
   website_url?: string | null;
+  description?: string | null;
+  focus?: string | null;
+  employee_count?: number | null;
+  known_revenue?: string | null;
+  status?: string | null;
+  founded_year?: number | null;
+  hq_location?: string | null;
   aliases?: string[];
   last_verified_at?: Date | null;
 };
@@ -27,37 +21,20 @@ export type SourceRecord = {
   url: string;
 };
 
-export type UpsertCompanyResult = {
-  record: CompanyRecord;
-  created: boolean;
-};
-
 export type UpsertSourceResult = {
   record: SourceRecord;
   created: boolean;
 };
 
-export type RepositoryResult = {
-  summary: IngestSummary;
+export type UpsertCompanyResult = {
+  record: { id: string };
+  created: boolean;
 };
 
 export interface IngestRepository {
-  upsertSource(source: IngestSource): Promise<UpsertSourceResult>;
-  upsertCompany(company: IngestCompany): Promise<UpsertCompanyResult>;
   listCompanies(): Promise<KnownCompany[]>;
-  linkCompanySource(
-    companyId: string,
-    sourceId: string,
-    sourceKind: string,
-  ): Promise<boolean>;
-  upsertPeople(
-    companyId: string,
-    people: IngestPerson[],
-    sourceMap: Map<string, string>,
-  ): Promise<number>;
-  upsertFundingRounds(
-    companyId: string,
-    rounds: IngestFundingRound[],
-    sourceMap: Map<string, string>,
-  ): Promise<number>;
+  upsertSeedCompany(company: SeedCompany): Promise<UpsertCompanyResult>;
+  updateCompanyFromRefresh(companyId: string, update: RefreshUpdate): Promise<void>;
+  upsertSource(source: SourceInput): Promise<UpsertSourceResult>;
+  linkCompanySource(companyId: string, sourceId: string, sourceKind: string): Promise<void>;
 }
