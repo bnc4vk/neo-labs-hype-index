@@ -35,16 +35,10 @@
     <main class="px-6 pb-24 pt-16 md:px-12">
       <section class="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div class="flex flex-col gap-4">
-          <p class="text-sm uppercase tracking-[0.3em] text-ember">Weekly index</p>
           <h1 class="text-4xl font-semibold leading-tight md:text-6xl">Neo-Lab Hype Index</h1>
           <p class="max-w-2xl text-base text-ink/80 md:text-lg">
-            A weekly-updated directory of US-based AI research‑lab‑style startups. We focus on labs
-            building foundational AI capability and surface the most recent public signals we can
-            find.
-          </p>
-          <p class="text-sm text-ink/60">
-            The information presented on this page is regularly refreshed but nevertheless may
-            present outdated information.
+            A weekly-updated directory of US-based AI research‑lab‑style startups; data is refreshed
+            regularly but may be incomplete.
           </p>
         </div>
 
@@ -52,7 +46,7 @@
           <div class="flex items-center justify-between">
             <h2 class="text-2xl font-semibold">Neolabs</h2>
             <span id="companies-count" class="text-xs uppercase tracking-[0.2em] text-ink/50">
-              0 tracked
+              Loading…
             </span>
           </div>
 
@@ -62,16 +56,12 @@
                 <tr>
                   <th class="py-3 pr-4">Company</th>
                   <th class="py-3 pr-4">Focus</th>
-                  <th class="py-3 pr-4">HQ</th>
-                  <th class="py-3 pr-4">Status</th>
-                  <th class="py-3 pr-4">Employees</th>
-                  <th class="py-3 pr-4">Last updated</th>
                   <th class="py-3">Sources</th>
                 </tr>
               </thead>
               <tbody id="companies-body">
                 <tr>
-                  <td colSpan="7" class="py-8 text-center text-ink/60">Loading...</td>
+                  <td colSpan="3" class="py-8 text-center text-ink/60">Loading...</td>
                 </tr>
               </tbody>
             </table>
@@ -81,9 +71,7 @@
         <div class="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
           <section class="rounded-3xl border border-black/10 bg-white/70 p-6 shadow-soft">
             <h2 class="text-2xl font-semibold">Sources</h2>
-            <p class="mt-2 text-sm text-ink/70">
-              Unique publishers/domains from the most recent ingestion.
-            </p>
+            <p class="mt-2 text-sm text-ink/70">Top publishers from the most recent refresh.</p>
             <div id="sources-list" class="mt-4 flex flex-wrap gap-2">
               <span class="text-sm text-ink/60">Loading...</span>
             </div>
@@ -92,13 +80,21 @@
           <section class="rounded-3xl border border-black/10 bg-gradient-to-br from-ember/10 via-white/80 to-ocean/10 p-6 shadow-soft">
             <h2 class="text-2xl font-semibold">Contact us</h2>
             <p class="mt-3 text-sm text-ink/70">
-              If you feel there is inaccurate or missing information presented here, please reach
-              out to bnc4vk@gmail.com
+              Questions or corrections?
+              <a class="font-medium text-ink underline underline-offset-4" href="mailto:bnc4vk@gmail.com">
+                bnc4vk@gmail.com
+              </a>
             </p>
-            <div class="mt-6 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-xs uppercase tracking-[0.2em] text-white">
-              bnc4vk@gmail.com
-            </div>
           </section>
+        </div>
+
+        <div class="mt-8 flex justify-end">
+          <span
+            id="last-refresh"
+            class="rounded-full border border-ink/10 bg-white/70 px-4 py-2 text-xs uppercase tracking-[0.2em] text-ink/60"
+          >
+            Last refresh: —
+          </span>
         </div>
       </section>
     </main>
