@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "fs";
 import { dirname, resolve } from "path";
 import { PrismaRepository } from "./repo/prisma";
 import { loadSeedList } from "./lib/seed";
-import { runParallelCompanyTask } from "./lib/parallel";
+import { runParallelCompanyTasks } from "./lib/parallel";
 import { applyRefreshUpdate } from "./lib/refresh";
 import { normalizeName } from "./lib/normalize";
 
@@ -91,13 +91,16 @@ const runRefresh = async () => {
     return;
   }
 
+  console.log(`[refresh] requesting updates for ${companies.length} companies via Parallel Task Group`);  
+  const outputsByCompanyId = await runParallelCompanyTasks(companies);
+
   let updated = 0;
   let failed = 0;
 
   for (const company of companies) {
-    console.log(`[refresh] ${company.name}`);
+    console.log(`[refresh] apply ${company.name}`);
     try {
-      const output = await runParallelCompanyTask(company);
+      const output = outputsByCompanyId.get(company.id) ?? null;
       const { update, sources } = applyRefreshUpdate(company, output);
       if (!update) {
         failed += 1;

@@ -7,6 +7,17 @@ import type { IngestRepository, KnownCompany, UpsertCompanyResult, UpsertSourceR
 const withUpdatedAt = <T extends Record<string, unknown>>(data: T) =>
   ({ ...data, updated_at: new Date() }) as T & { updated_at: Date };
 
+const stripNullBytes = (value: string) => value.replace(/\u0000/g, "");
+
+const sanitizeText = (value?: string | null) => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  const cleaned = stripNullBytes(value);
+  const trimmed = cleaned.trim();
+  return trimmed.length ? trimmed : undefined;
+};
+
 const normalizeAliases = (company: SeedCompany) => {
   const aliases = company.alias ? [company.alias] : [];
   const normalizedName = normalizeName(company.name);
@@ -78,15 +89,15 @@ export class PrismaRepository implements IngestRepository {
 
   async updateCompanyFromRefresh(companyId: string, update: RefreshUpdate): Promise<void> {
     const data = pickDefined({
-      canonical_domain: update.canonicalDomain ?? undefined,
-      website_url: update.websiteUrl ?? undefined,
-      description: update.description ?? undefined,
-      focus: update.focus ?? undefined,
+      canonical_domain: sanitizeText(update.canonicalDomain ?? undefined),
+      website_url: sanitizeText(update.websiteUrl ?? undefined),
+      description: sanitizeText(update.description ?? undefined),
+      focus: sanitizeText(update.focus ?? undefined),
       employee_count: update.employeeCount ?? undefined,
-      known_revenue: update.knownRevenue ?? undefined,
-      status: update.status ?? undefined,
+      known_revenue: sanitizeText(update.knownRevenue ?? undefined),
+      status: sanitizeText(update.status ?? undefined),
       founded_year: update.foundedYear ?? undefined,
-      hq_location: update.hqLocation ?? undefined,
+      hq_location: sanitizeText(update.hqLocation ?? undefined),
       last_verified_at: update.lastVerifiedAt ?? undefined,
     });
 
@@ -105,13 +116,13 @@ export class PrismaRepository implements IngestRepository {
     const existing = await prisma.source.findUnique({ where: { url: normalizedUrl } });
     const createData = {
       url: normalizedUrl,
-      title: source.title ?? undefined,
-      publisher: source.publisher ?? undefined,
+      title: sanitizeText(source.title ?? undefined),
+      publisher: sanitizeText(source.publisher ?? undefined),
       published_at: source.publishedAt ?? undefined,
     };
     const updateData = pickDefined({
-      title: source.title ?? undefined,
-      publisher: source.publisher ?? undefined,
+      title: sanitizeText(source.title ?? undefined),
+      publisher: sanitizeText(source.publisher ?? undefined),
       published_at: source.publishedAt ?? undefined,
     });
 

@@ -31,6 +31,7 @@ export type ParallelSource = {
 };
 
 export type ParallelCompanyOutput = {
+  company_id?: string | null;
   company_name?: string | null;
   website_url?: string | null;
   canonical_domain?: string | null;
