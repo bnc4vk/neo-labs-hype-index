@@ -6,12 +6,13 @@
   const companiesBody = document.getElementById("companies-body");
   const companiesCount = document.getElementById("companies-count");
   const sourcesList = document.getElementById("sources-list");
+  const lastRefresh = document.getElementById("last-refresh");
 
   const setCompaniesMessage = (message) => {
     if (!companiesBody) return;
     companiesBody.innerHTML = `
       <tr>
-        <td colSpan="7" class="py-8 text-center text-ink/60">${message}</td>
+        <td colSpan="3" class="py-8 text-center text-ink/60">${message}</td>
       </tr>
     `;
   };
@@ -60,19 +61,20 @@
   };
 
   const buildSourceSummary = (sources) => {
-    const labels = new Set();
+    const counts = new Map();
     for (const entry of sources) {
       const source = entry?.source;
       if (!source) continue;
       const label = source.publisher || getDomain(source.url);
-      if (label) {
-        labels.add(label);
-      }
+      if (!label) continue;
+      counts.set(label, (counts.get(label) || 0) + 1);
     }
-    const list = Array.from(labels);
-    const preview = list.slice(0, 2);
-    const remaining = list.length - preview.length;
-    return { preview, remaining };
+    if (!counts.size) {
+      return { top: null, remaining: 0, count: 0 };
+    }
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    const [top] = sorted[0];
+    return { top, remaining: sorted.length - 1, count: sorted.length };
   };
 
   const buildPublisherList = (sources) => {
@@ -137,6 +139,9 @@
       if (companiesCount) {
         companiesCount.textContent = "0 tracked";
       }
+      if (lastRefresh) {
+        lastRefresh.textContent = "Last refresh: —";
+      }
       return;
     }
 
@@ -144,30 +149,35 @@
       companiesCount.textContent = `${companies.length} tracked`;
     }
 
+    if (lastRefresh) {
+      const maxDate = companies.reduce((acc, company) => {
+        const candidate = company.last_verified_at || company.updated_at;
+        if (!candidate) return acc;
+        const value = new Date(candidate);
+        if (Number.isNaN(value.getTime())) return acc;
+        if (!acc) return value;
+        return value > acc ? value : acc;
+      }, null);
+      lastRefresh.textContent = `Last refresh: ${formatDate(maxDate)}`;
+    }
+
     const rows = companies
       .map((company) => {
-        const freshness = company.last_verified_at || company.updated_at;
         const sourceSummary = buildSourceSummary(company.company_sources || []);
-        const sourcesLabel = sourceSummary.preview.length
-          ? `${sourceSummary.preview.join(", ")}${
-              sourceSummary.remaining > 0 ? ` +${sourceSummary.remaining}` : ""
-            }`
+        const sourcesLabel = sourceSummary.top
+          ? `${sourceSummary.top}${sourceSummary.remaining > 0 ? ` +${sourceSummary.remaining}` : ""}`
           : "—";
         const domain = company.website_url ? getDomain(company.website_url) : "";
 
         return `
           <tr class="border-b border-black/5">
             <td class="py-4 pr-4">
-              <div class="flex flex-col">
+              <div class="flex items-center gap-2">
                 <span class="font-medium">${company.name}</span>
-                ${domain ? `<span class="text-xs text-ink/60">${domain}</span>` : ""}
+                ${domain ? `<a class="text-xs text-ink/40 hover:text-ink" href="${company.website_url}" target="_blank" rel="noreferrer">↗</a>` : ""}
               </div>
             </td>
-            <td class="py-4 pr-4 text-ink/80">${company.focus || "—"}</td>
-            <td class="py-4 pr-4 text-ink/80">${company.hq_location || "—"}</td>
-            <td class="py-4 pr-4 text-ink/80">${company.status || "—"}</td>
-            <td class="py-4 pr-4 text-ink/80">${company.employee_count ?? "—"}</td>
-            <td class="py-4 pr-4 text-ink/80">${formatDate(freshness)}</td>
+            <td class="py-4 pr-4 text-ink/80 truncate max-w-[280px]">${company.focus || "—"}</td>
             <td class="py-4 text-ink/80">${sourcesLabel}</td>
           </tr>
         `;
