@@ -7,7 +7,12 @@ import type {
   IngestPerson,
   IngestSource,
 } from "../lib/types";
-import type { IngestRepository, UpsertCompanyResult, UpsertSourceResult } from "./types";
+import type {
+  IngestRepository,
+  KnownCompany,
+  UpsertCompanyResult,
+  UpsertSourceResult,
+} from "./types";
 
 export type MemoryCompany = {
   id: string;
@@ -72,6 +77,23 @@ export class MemoryRepository implements IngestRepository {
   people: MemoryPerson[] = [];
   fundingRounds: MemoryFundingRound[] = [];
   companySources: MemoryCompanySource[] = [];
+
+  async listCompanies(): Promise<KnownCompany[]> {
+    return [...this.companies]
+      .sort((a, b) => {
+        const aTime = a.last_verified_at?.getTime() ?? 0;
+        const bTime = b.last_verified_at?.getTime() ?? 0;
+        return aTime - bTime;
+      })
+      .map((company) => ({
+        id: company.id,
+        name: company.name,
+        canonical_domain: company.canonical_domain ?? null,
+        website_url: company.website_url ?? null,
+        aliases: company.aliases,
+        last_verified_at: company.last_verified_at ?? null,
+      }));
+  }
 
   async upsertSource(source: IngestSource): Promise<UpsertSourceResult> {
     const normalizedUrl = normalizeUrl(source.url) ?? source.url;

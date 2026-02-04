@@ -34,6 +34,13 @@ const VERB_MARKERS = [
 ];
 
 const LEADING_MARKERS = [
+  "exclusive",
+  "exclusive:",
+  "ai startup",
+  "startup",
+  "new startup",
+  "ai lab",
+  "research lab",
   "announcing",
   "introducing",
   "introducing the",

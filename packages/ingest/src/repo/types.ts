@@ -13,6 +13,15 @@ export type CompanyRecord = {
   aliases?: string[];
 };
 
+export type KnownCompany = {
+  id: string;
+  name: string;
+  canonical_domain?: string | null;
+  website_url?: string | null;
+  aliases?: string[];
+  last_verified_at?: Date | null;
+};
+
 export type SourceRecord = {
   id: string;
   url: string;
@@ -35,6 +44,7 @@ export type RepositoryResult = {
 export interface IngestRepository {
   upsertSource(source: IngestSource): Promise<UpsertSourceResult>;
   upsertCompany(company: IngestCompany): Promise<UpsertCompanyResult>;
+  listCompanies(): Promise<KnownCompany[]>;
   linkCompanySource(
     companyId: string,
     sourceId: string,

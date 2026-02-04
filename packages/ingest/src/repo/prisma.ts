@@ -1,4 +1,5 @@
 import { prisma } from "@neolabs/db";
+import type { Company } from "@neolabs/db";
 import { maxDate, mergeAliases, normalizeName, pickDefined } from "../lib/normalize";
 import { normalizeUrl } from "../lib/url";
 import type {
@@ -7,7 +8,12 @@ import type {
   IngestPerson,
   IngestSource,
 } from "../lib/types";
-import type { IngestRepository, UpsertCompanyResult, UpsertSourceResult } from "./types";
+import type {
+  IngestRepository,
+  KnownCompany,
+  UpsertCompanyResult,
+  UpsertSourceResult,
+} from "./types";
 
 const normalizeAliases = (company: IngestCompany) => {
   const aliases = company.aliases ?? [];
@@ -26,15 +32,31 @@ const withUpdatedAt = <T extends Record<string, unknown>>(data: T) =>
   ({ ...data, updated_at: new Date() }) as T & { updated_at: Date };
 
 export class PrismaRepository implements IngestRepository {
+  async listCompanies(): Promise<KnownCompany[]> {
+    const records = await prisma.company.findMany({
+      select: {
+        id: true,
+        name: true,
+        canonical_domain: true,
+        website_url: true,
+        aliases: true,
+        last_verified_at: true,
+      },
+      orderBy: { last_verified_at: "asc" },
+    });
+
+    return records;
+  }
+
   async upsertSource(source: IngestSource): Promise<UpsertSourceResult> {
     const normalizedUrl = normalizeUrl(source.url) ?? source.url;
     const existing = await prisma.source.findUnique({ where: { url: normalizedUrl } });
-    const createData = pickDefined({
+    const createData = {
       url: normalizedUrl,
       title: source.title ?? undefined,
       publisher: source.publisher ?? undefined,
       published_at: source.publishedAt ?? undefined,
-    });
+    };
     const updateData = pickDefined({
       title: source.title ?? undefined,
       publisher: source.publisher ?? undefined,

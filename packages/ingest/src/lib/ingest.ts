@@ -8,55 +8,78 @@ import {
   SEARCH_QUERIES,
 } from "../config/sources";
 import { extractCompanyName } from "./extract";
+import { resolveCompanyName } from "./entity-resolution";
 import { fetchHtml } from "./fetcher";
 import { normalizeName } from "./normalize";
 import { isLikelyCompanyName, scoreNeolabRelevance } from "./neolab";
 import { fetchRssItems } from "./rss";
 import { searchTavily } from "./tavily";
-import type { IngestCandidate, IngestSource, IngestSummary } from "./types";
+import {
+  getAllowlistFollowupEnabled,
+  getKnownCompanyLimit,
+  getKnownQueryLimit,
+  getLookbackDays,
+  getSearchSettings,
+  getSeedLimit,
+  getSeedQueryLimit,
+  shouldForceSearch,
+} from "./settings";
+import type {
+  IngestCandidate,
+  IngestSource,
+  IngestSummary,
+  SourceOrigin,
+  SourcePipeline,
+} from "./types";
 import { getHostname, isAllowedDomain, isDeniedDomain, isFetchAllowed, normalizeUrl } from "./url";
-import type { IngestRepository } from "../repo/types";
+import type { IngestRepository, KnownCompany } from "../repo/types";
 
-const DISCOVERY_WINDOW_DAYS = (() => {
-  const raw = Number(process.env.INGEST_LOOKBACK_DAYS);
-  if (Number.isFinite(raw) && raw > 0) {
-    return raw;
-  }
-  return 14;
-})();
 const MIN_CANDIDATES = 6;
 const MIN_SOURCE_SCORE = 2;
 const MIN_CANDIDATE_SCORE = 2;
 const MIN_PORTFOLIO_SCORE = 1;
 const MAX_SOURCES_TO_PARSE = 400;
 const MAX_DISCOVERY_LINKS_PER_PAGE = 120;
+const MAX_ALLOWLIST_FOLLOWUPS = 3;
+const MAX_FOLLOWUP_RESULTS = 4;
 
 const isRecent = (date?: Date | null) => {
   if (!date) {
     return true;
   }
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - DISCOVERY_WINDOW_DAYS);
+  cutoff.setDate(cutoff.getDate() - getLookbackDays());
   return date >= cutoff;
 };
 
+const mergeSources = (base: IngestSource, incoming: IngestSource): IngestSource => ({
+  url: base.url,
+  title: base.title ?? incoming.title ?? null,
+  publisher: base.publisher ?? incoming.publisher ?? null,
+  publishedAt: base.publishedAt ?? incoming.publishedAt ?? null,
+  snippet: base.snippet ?? incoming.snippet ?? null,
+  sourceKind: base.sourceKind ?? incoming.sourceKind,
+  origin: base.origin ?? incoming.origin,
+  pipeline: base.pipeline ?? incoming.pipeline,
+});
+
 const dedupeSources = (sources: IngestSource[]) => {
-  const seen = new Set<string>();
-  const deduped: IngestSource[] = [];
+  const seen = new Map<string, IngestSource>();
 
   for (const source of sources) {
     const normalized = normalizeUrl(source.url) ?? source.url;
-    if (seen.has(normalized)) {
-      continue;
+    const existing = seen.get(normalized);
+    if (existing) {
+      seen.set(normalized, mergeSources(existing, { ...source, url: normalized }));
+    } else {
+      seen.set(normalized, { ...source, url: normalized });
     }
-    seen.add(normalized);
-    deduped.push({ ...source, url: normalized });
   }
 
-  return deduped;
+  return Array.from(seen.values());
 };
 
-const collectFromRss = async (): Promise<IngestSource[]> => {
+const collectFromRss = async (pipeline: SourcePipeline): Promise<IngestSource[]> => {
   const items = await fetchRssItems(RSS_FEEDS);
   const sources: IngestSource[] = [];
 
@@ -81,13 +104,15 @@ const collectFromRss = async (): Promise<IngestSource[]> => {
       publishedAt: item.publishedAt ?? undefined,
       snippet: item.snippet ?? undefined,
       sourceKind: "overview",
+      origin: "rss",
+      pipeline,
     });
   }
 
   return sources;
 };
 
-const collectFromDiscoveryPages = async (): Promise<IngestSource[]> => {
+const collectFromDiscoveryPages = async (pipeline: SourcePipeline): Promise<IngestSource[]> => {
   const sources: IngestSource[] = [];
 
   for (const pageUrl of DISCOVERY_PAGES) {
@@ -102,6 +127,8 @@ const collectFromDiscoveryPages = async (): Promise<IngestSource[]> => {
         title: null,
         publisher: getHostname(pageUrl) ?? null,
         sourceKind: "overview",
+        origin: "discovery",
+        pipeline,
       });
 
       const html = await fetchHtml(pageUrl);
@@ -139,6 +166,8 @@ const collectFromDiscoveryPages = async (): Promise<IngestSource[]> => {
           title: text || title || null,
           publisher: host ?? null,
           sourceKind: "overview",
+          origin: "discovery",
+          pipeline,
         });
         added += 1;
       });
@@ -150,7 +179,13 @@ const collectFromDiscoveryPages = async (): Promise<IngestSource[]> => {
   return sources;
 };
 
-const collectFromSearch = async (): Promise<IngestSource[]> => {
+type SearchCollectionOptions = {
+  queries: string[];
+  origin: SourceOrigin;
+  pipeline: SourcePipeline;
+};
+
+const collectFromSearch = async (options: SearchCollectionOptions): Promise<IngestSource[]> => {
   const provider = process.env.SEARCH_PROVIDER?.toLowerCase();
   const apiKey = process.env.SEARCH_API_KEY;
 
@@ -159,17 +194,17 @@ const collectFromSearch = async (): Promise<IngestSource[]> => {
   }
 
   const sources: IngestSource[] = [];
-  const topic = process.env.INGEST_TAVILY_TOPIC === "general" ? "general" : "news";
-  const depth = process.env.INGEST_TAVILY_DEPTH === "advanced" ? "advanced" : "basic";
-  const maxResults = Number(process.env.INGEST_TAVILY_MAX_RESULTS ?? "5");
-  const resolvedMaxResults = Number.isFinite(maxResults) && maxResults > 0 ? maxResults : 5;
+  const { topic, depth, maxResults } = getSearchSettings();
+  const followupEnabled = getAllowlistFollowupEnabled();
+  const followupQueries = new Set<string>();
+  let followupCount = 0;
 
-  for (const query of SEARCH_QUERIES) {
+  for (const query of options.queries) {
     try {
       const results = await searchTavily(query, apiKey, {
-        days: DISCOVERY_WINDOW_DAYS,
+        days: getLookbackDays(),
         topic,
-        maxResults: resolvedMaxResults,
+        maxResults,
         searchDepth: depth,
       });
       if (process.env.INGEST_DEBUG_SEARCH === "1") {
@@ -193,7 +228,61 @@ const collectFromSearch = async (): Promise<IngestSource[]> => {
           publisher: result.publisher ?? getHostname(result.url) ?? null,
           publishedAt: result.publishedAt ?? undefined,
           sourceKind: "overview",
+          origin: options.origin,
+          pipeline: options.pipeline,
+          query,
         });
+
+        if (
+          followupEnabled &&
+          followupCount < MAX_ALLOWLIST_FOLLOWUPS &&
+          !isFetchAllowed(result.url, ALLOWED_DOMAINS, DENYLIST_DOMAINS)
+        ) {
+          const nameHint = result.title ? extractCompanyName(result.title) : null;
+          const followupQuery = nameHint ? `\"${nameHint}\"` : query;
+          if (!followupQueries.has(followupQuery)) {
+            followupQueries.add(followupQuery);
+            followupCount += 1;
+            try {
+              const followupResults = await searchTavily(followupQuery, apiKey, {
+                days: getLookbackDays(),
+                topic,
+                maxResults: MAX_FOLLOWUP_RESULTS,
+                searchDepth: depth,
+              });
+              for (const followup of followupResults) {
+                if (!followup.url) {
+                  continue;
+                }
+                if (!isFetchAllowed(followup.url, ALLOWED_DOMAINS, DENYLIST_DOMAINS)) {
+                  continue;
+                }
+                const followupRelevance = scoreNeolabRelevance({
+                  title: followup.title,
+                  snippet: null,
+                });
+                if (followupRelevance.score < MIN_SOURCE_SCORE) {
+                  continue;
+                }
+                sources.push({
+                  url: followup.url,
+                  title: followup.title ?? null,
+                  publisher: followup.publisher ?? getHostname(followup.url) ?? null,
+                  publishedAt: followup.publishedAt ?? undefined,
+                  sourceKind: "overview",
+                  origin: "allowlist_followup",
+                  pipeline: options.pipeline,
+                  query,
+                });
+              }
+            } catch (error) {
+              console.warn(
+                `Tavily allowlist followup failed for query \"${followupQuery}\":`,
+                error instanceof Error ? error.message : error,
+              );
+            }
+          }
+        }
       }
     } catch (error) {
       console.warn(`Tavily search failed for query "${query}":`, error instanceof Error ? error.message : error);
@@ -586,7 +675,8 @@ const buildCandidatesFromSource = async (source: IngestSource): Promise<IngestCa
   const isDirectory = isAllowedDomain(host, DIRECTORY_DOMAINS);
 
   const canFetch = isFetchAllowed(normalizedSourceUrl, ALLOWED_DOMAINS, DENYLIST_DOMAINS);
-  let extractedCompanyNames: string[] = [];
+  let jsonLdCompanyNames: string[] = [];
+  const fallbackNames: string[] = [];
   let websiteUrl: string | null = null;
   let metaSnippet: string | null = null;
 
@@ -625,12 +715,12 @@ const buildCandidatesFromSource = async (source: IngestSource): Promise<IngestCa
         $("meta[property=\"og:description\"]").attr("content") ??
         null;
 
-      extractedCompanyNames = extractCompanyNamesFromJsonLd(html);
+      jsonLdCompanyNames = extractCompanyNamesFromJsonLd(html);
       websiteUrl = extractExternalWebsite(html, normalizedSourceUrl);
-      if (extractedCompanyNames.length === 0 && source.title) {
-        const fallback = extractCompanyName(source.title);
+      if (source.title) {
+        const fallback = extractCompanyName(source.title) ?? source.title;
         if (fallback) {
-          extractedCompanyNames = [fallback];
+          fallbackNames.push(fallback);
         }
       }
     } catch (error) {
@@ -640,16 +730,29 @@ const buildCandidatesFromSource = async (source: IngestSource): Promise<IngestCa
     // For non-fetchable sources, fall back to the title itself.
     if (source.title) {
       const fallback = extractCompanyName(source.title) ?? source.title;
-      extractedCompanyNames = [fallback];
+      fallbackNames.push(fallback);
     }
   }
 
-  if (extractedCompanyNames.length === 0) {
+  if (jsonLdCompanyNames.length === 0 && fallbackNames.length === 0) {
     const derived = extractNameFromUrl(normalizedSourceUrl);
     if (derived) {
-      extractedCompanyNames = [derived];
+      fallbackNames.push(derived);
     }
   }
+
+  const resolution = await resolveCompanyName({
+    url: normalizedSourceUrl,
+    title: source.title,
+    snippet: source.snippet ?? null,
+    metaSnippet,
+    jsonLdNames: jsonLdCompanyNames,
+    fallbackNames,
+  });
+
+  const extractedCompanyNames = resolution.companyNames.length
+    ? resolution.companyNames
+    : fallbackNames;
 
   const candidates: IngestCandidate[] = [];
   const seenNames = new Set<string>();
@@ -766,28 +869,49 @@ export const ingestCandidates = async (
   return summary;
 };
 
-export const ingestFromSources = async (
-  repository: IngestRepository,
-): Promise<IngestSummary> => {
-  const candidates = await collectCandidatesFromSources();
-  return ingestCandidates(repository, candidates);
+export type CandidateCollection = {
+  candidates: IngestCandidate[];
+  sources: IngestSource[];
 };
 
-export const collectCandidatesFromSources = async (): Promise<IngestCandidate[]> => {
+const parseSourcesToCandidates = async (
+  sources: IngestSource[],
+  label: string,
+): Promise<CandidateCollection> => {
+  const deduped = dedupeSources(sources);
+  const sourcesToParse = deduped.slice(0, MAX_SOURCES_TO_PARSE);
+  console.log(
+    `[ingest] parsing ${label} sources for company candidates: ${sourcesToParse.length}/${deduped.length}`,
+  );
+  const candidatesNested = await mapWithConcurrency(sourcesToParse, 4, async (source, index) => {
+    const host = getHostname(source.url) ?? "unknown";
+    console.log(`[ingest] parse ${index + 1}/${sourcesToParse.length}: ${host}`);
+    return buildCandidatesFromSource(source);
+  });
+  const candidates = candidatesNested.flat();
+  console.log(`[ingest] candidates prepared (${label}): ${candidates.length}`);
+  return { candidates, sources: sourcesToParse };
+};
+
+const collectSourcesForNewDiscoveries = async (): Promise<IngestSource[]> => {
   console.log("[ingest] fetching RSS feeds");
-  const rssSources = await collectFromRss();
+  const rssSources = await collectFromRss("new_discovery");
   console.log(`[ingest] RSS items collected: ${rssSources.length}`);
   let sources = dedupeSources(rssSources);
 
   console.log("[ingest] fetching discovery pages");
-  const discoverySources = await collectFromDiscoveryPages();
+  const discoverySources = await collectFromDiscoveryPages("new_discovery");
   sources = dedupeSources([...sources, ...discoverySources]);
   console.log(`[ingest] discovery items collected: ${discoverySources.length}`);
 
-  const forceSearch = process.env.INGEST_FORCE_SEARCH === "1";
+  const forceSearch = shouldForceSearch();
   if (forceSearch || sources.length < MIN_CANDIDATES) {
     console.log("[ingest] running Tavily fallback");
-    const searchSources = await collectFromSearch();
+    const searchSources = await collectFromSearch({
+      queries: SEARCH_QUERIES,
+      origin: "search",
+      pipeline: "new_discovery",
+    });
     sources = dedupeSources([...sources, ...searchSources]);
     console.log(`[ingest] Tavily items collected: ${searchSources.length}`);
   }
@@ -815,6 +939,8 @@ export const collectCandidatesFromSources = async (): Promise<IngestCandidate[]>
         title: null,
         publisher: getHostname(normalized) ?? null,
         sourceKind: "overview",
+        origin: "discovery",
+        pipeline: "new_discovery",
       });
     }
   }
@@ -834,13 +960,224 @@ export const collectCandidatesFromSources = async (): Promise<IngestCandidate[]>
     }
   }
 
-  console.log(`[ingest] parsing sources for company candidates: ${sourcesToParse.length}/${sources.length}`);
-  const candidatesNested = await mapWithConcurrency(sourcesToParse, 4, async (source, index) => {
-    const host = getHostname(source.url) ?? "unknown";
-    console.log(`[ingest] parse ${index + 1}/${sourcesToParse.length}: ${host}`);
-    return buildCandidatesFromSource(source);
-  });
-  const candidates = candidatesNested.flat();
-  console.log(`[ingest] candidates prepared: ${candidates.length}`);
-  return candidates;
+  return sourcesToParse;
 };
+
+const buildKnownQueries = (company: KnownCompany) => {
+  const queries: string[] = [];
+  const name = company.name.trim();
+  if (!name) {
+    return queries;
+  }
+
+  const domainHint = company.canonical_domain
+    ?? (company.website_url ? getHostname(company.website_url) : null);
+  const base = domainHint ? `\"${name}\" ${domainHint}` : `\"${name}\"`;
+  queries.push(base);
+
+  if (getKnownQueryLimit() > 1) {
+    queries.push(`\"${name}\" funding`);
+  }
+
+  return queries.slice(0, getKnownQueryLimit());
+};
+
+const collectSourcesForKnownUpdates = async (
+  knownCompanies: KnownCompany[],
+): Promise<IngestSource[]> => {
+  if (!knownCompanies.length) {
+    return [];
+  }
+
+  const limit = getKnownCompanyLimit();
+  const selected = limit ? knownCompanies.slice(0, limit) : knownCompanies;
+  const queries = new Set<string>();
+  for (const company of selected) {
+    for (const query of buildKnownQueries(company)) {
+      queries.add(query);
+    }
+  }
+  if (!queries.size) {
+    return [];
+  }
+
+  console.log(`[ingest] running known-company searches: ${queries.size}`);
+  return collectFromSearch({
+    queries: Array.from(queries),
+    origin: "search",
+    pipeline: "known_updates",
+  });
+};
+
+const buildSeedQueries = (seed: string) => {
+  const trimmed = seed.trim();
+  if (!trimmed) {
+    return [];
+  }
+  const base = `\"${trimmed}\"`;
+  const queries = [base];
+  if (getSeedQueryLimit() > 1) {
+    queries.push(`\"${trimmed}\" AI lab`);
+  }
+  return queries.slice(0, getSeedQueryLimit());
+};
+
+const collectSourcesForSeedUniverse = async (
+  seeds: string[],
+): Promise<IngestSource[]> => {
+  if (!seeds.length) {
+    return [];
+  }
+  const limit = getSeedLimit();
+  const selected = limit ? seeds.slice(0, limit) : seeds;
+  const queries = new Set<string>();
+  for (const seed of selected) {
+    for (const query of buildSeedQueries(seed)) {
+      queries.add(query);
+    }
+  }
+  if (!queries.size) {
+    return [];
+  }
+  console.log(`[ingest] running seed-universe searches: ${queries.size}`);
+  return collectFromSearch({
+    queries: Array.from(queries),
+    origin: "seed_search",
+    pipeline: "seed_bootstrap",
+  });
+};
+
+export const collectCandidatesForNewDiscoveries = async (): Promise<CandidateCollection> => {
+  const sourcesToParse = await collectSourcesForNewDiscoveries();
+  return parseSourcesToCandidates(sourcesToParse, "new discovery");
+};
+
+export const collectCandidatesForKnownUpdates = async (
+  knownCompanies: KnownCompany[],
+): Promise<CandidateCollection> => {
+  const sources = await collectSourcesForKnownUpdates(knownCompanies);
+  if (!sources.length) {
+    return { candidates: [], sources: [] };
+  }
+
+  const queryToCompany = new Map<string, KnownCompany>();
+  for (const company of knownCompanies) {
+    for (const query of buildKnownQueries(company)) {
+      queryToCompany.set(query, company);
+    }
+  }
+
+  const byCompanyId = new Map<string, { company: KnownCompany; sources: IngestSource[] }>();
+  for (const source of sources) {
+    const query = source.query ?? null;
+    if (!query) {
+      continue;
+    }
+    const company = queryToCompany.get(query);
+    if (!company) {
+      continue;
+    }
+    const existing = byCompanyId.get(company.id);
+    if (existing) {
+      existing.sources.push(source);
+    } else {
+      byCompanyId.set(company.id, { company, sources: [source] });
+    }
+  }
+
+  const candidates: IngestCandidate[] = [];
+  for (const entry of byCompanyId.values()) {
+    const lastVerifiedAt = entry.sources.reduce<Date | null>((acc, source) => {
+      const published = source.publishedAt ?? null;
+      if (!published) {
+        return acc;
+      }
+      if (!acc) {
+        return published;
+      }
+      return published > acc ? published : acc;
+    }, null);
+
+    candidates.push({
+      company: {
+        name: entry.company.name,
+        canonicalDomain: entry.company.canonical_domain ?? null,
+        websiteUrl: entry.company.website_url ?? null,
+        aliases: entry.company.aliases ?? [],
+        lastVerifiedAt,
+      },
+      sources: dedupeSources(entry.sources),
+    });
+  }
+
+  return { candidates, sources: dedupeSources(sources) };
+};
+
+export const collectCandidatesForSeedBootstrap = async (
+  seeds: string[],
+): Promise<CandidateCollection> => {
+  const sources = await collectSourcesForSeedUniverse(seeds);
+  const queryToSeed = new Map<string, string>();
+  for (const seed of seeds) {
+    for (const query of buildSeedQueries(seed)) {
+      queryToSeed.set(query, seed);
+    }
+  }
+
+  const bySeed = new Map<string, IngestSource[]>();
+  for (const source of sources) {
+    const query = source.query ?? null;
+    if (!query) {
+      continue;
+    }
+    const seed = queryToSeed.get(query);
+    if (!seed) {
+      continue;
+    }
+    const existing = bySeed.get(seed);
+    if (existing) {
+      existing.push(source);
+    } else {
+      bySeed.set(seed, [source]);
+    }
+  }
+
+  const candidates: IngestCandidate[] = [];
+  for (const seed of seeds) {
+    const seedSources = bySeed.get(seed) ?? [];
+    const lastVerifiedAt = seedSources.reduce<Date | null>((acc, source) => {
+      const published = source.publishedAt ?? null;
+      if (!published) {
+        return acc;
+      }
+      if (!acc) {
+        return published;
+      }
+      return published > acc ? published : acc;
+    }, null);
+
+    const normalized = normalizeName(seed);
+    candidates.push({
+      company: {
+        name: seed,
+        aliases: normalized ? [normalized] : [],
+        lastVerifiedAt,
+      },
+      sources: dedupeSources(seedSources),
+    });
+  }
+
+  return { candidates, sources: dedupeSources(sources) };
+};
+
+export const collectCandidatesForSeedUniverse = async (
+  seeds: string[],
+): Promise<CandidateCollection> => {
+  const sources = await collectSourcesForSeedUniverse(seeds);
+  return parseSourcesToCandidates(sources, "seed universe");
+};
+
+export const ingestFromSources = async (
+  repository: IngestRepository,
+  candidates: IngestCandidate[],
+): Promise<IngestSummary> => ingestCandidates(repository, candidates);

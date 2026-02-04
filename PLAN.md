@@ -30,12 +30,17 @@
 - [x] GitHub Actions workflow to run ingestion weekly
 - [x] Minimal tests: normalization/parsing unit tests
 - [x] Minimal tests: ingestion idempotency smoke test
-- [ ] Ensure `pnpm lint`, `pnpm test`, `pnpm build` pass
+- [x] Ensure `pnpm lint`, `pnpm test`, `pnpm build` pass
 
 ## Phase 5 — Candidate tuning + controlled ingest
 - [x] Add dry-run candidate evaluation mode
 - [x] Purge Supabase tables (companies, sources, etc.)
-- [ ] Iterate sourcing tweaks to reach ≥70% match with provided list
+- [x] Move benchmark list to a dedicated file and add recency-weighted scoring
+- [x] Add seed universe list for discovery experiments
+- [x] Split ingestion into known-updates vs new-discovery pipelines
+- [x] Add optional LLM entity resolution (Mistral) for company names
+- [x] Add provenance reporting (JSON report + GitHub Actions summary/artifact)
+- [ ] Iterate sourcing tweaks and evaluate recency-weighted benchmark performance
 - [ ] Run ingest to write to Supabase after threshold
 
 ---
@@ -65,6 +70,19 @@
 - (2026-02-03) `pnpm lint` (pass; Next.js updated `apps/web/tsconfig.json`)
 - (2026-02-03) `pnpm test` (pass)
 - (2026-02-03) `pnpm build` (pass; warning about `serverExternalPackages` in `next.config.mjs`)
+- (2026-02-04) `INGEST_DRY_RUN=1 INGEST_LOOKBACK_DAYS=365 INGEST_FORCE_SEARCH=1 pnpm ingest` (dry-run compare; match rate 9%, weighted match rate 8%)
+- (2026-02-04) `pnpm lint` (pass)
+- (2026-02-04) `pnpm test` (pass; added benchmark tests)
+- (2026-02-04) `pnpm build` (pass; warning about `serverExternalPackages` in `next.config.mjs`)
+- (2026-02-04) `INGEST_PROFILE=benchmark INGEST_SEED_MODE=bootstrap ENTITY_RESOLUTION_MODE=llm pnpm ingest` (populated Supabase; report in `packages/ingest/artifacts/ingest-report-bootstrap.json`)
+- (2026-02-04) `INGEST_DRY_RUN=1 INGEST_PROFILE=benchmark INGEST_FORCE_SEARCH=1 ENTITY_RESOLUTION_MODE=llm pnpm ingest` (compare; report in `packages/ingest/artifacts/report-llm.json`)
+- (2026-02-04) `INGEST_DRY_RUN=1 INGEST_PROFILE=benchmark INGEST_FORCE_SEARCH=1 ENTITY_RESOLUTION_MODE=hybrid pnpm ingest` (compare; report in `packages/ingest/artifacts/report-hybrid.json`)
+- (2026-02-04) `INGEST_PROFILE=weekly INGEST_FORCE_SEARCH=1 ENTITY_RESOLUTION_MODE=hybrid INGEST_KNOWN_MAX=30 pnpm ingest` (weekly run; report in `packages/ingest/artifacts/weekly-report.json`)
+- (2026-02-04) `pnpm --filter ingest lint` (pass; fixed `tsconfig.json` rootDir and added `@types/node`)
+- (2026-02-04) `node --input-type=module ... prisma.*.deleteMany` (cleared Supabase tables: companies/sources/company_sources/people/funding_rounds)
+- (2026-02-04) `pnpm lint` (pass)
+- (2026-02-04) `pnpm test` (pass; added seed tests + LLM plumbing)
+- (2026-02-04) `pnpm build` (pass; warning about `serverExternalPackages` in `next.config.mjs`)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
@@ -75,3 +93,7 @@
 - Candidate sourcing improvements: relevance scoring filter, allowlisted page fetch + JSON-LD extraction, TechCrunch AI RSS feed, and portfolio-directory parsing for a16z.
 - Added `.env` loader for ingestion, expanded search controls (topic/depth/max results), and directory-domain parsing for startup lists.
 - Current discovery sources + generic search plateau at ~50% match vs provided list; need additional allowlisted sources or permission to use known list for targeted search to reach 70%.
+- Benchmark list moved to `packages/ingest/benchmarks/known-neolabs.txt` with recency-weighted scoring for compare mode.
+- Weekly ingestion now supports known-updates + new-discovery pipelines, seed-universe bootstrap mode, and JSON reporting with provenance counts.
+- Seed bootstrap (`INGEST_SEED_MODE=bootstrap`) now creates/updates only the companies listed in `seed-universe.txt` and attaches sources found via search (no candidate extraction).
+- Weekly GitHub Action hardened to use `INGEST_PROFILE=weekly` + hybrid entity resolution and upload report artifact.

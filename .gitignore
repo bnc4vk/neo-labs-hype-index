@@ -4,6 +4,8 @@ node_modules
 dist
 out
 coverage
+packages/ingest/artifacts
+packages/ingest/packages
 .env
 .env.*
 *.log

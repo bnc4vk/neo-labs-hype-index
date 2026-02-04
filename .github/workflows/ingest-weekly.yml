@@ -12,6 +12,17 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SEARCH_PROVIDER: tavily
       SEARCH_API_KEY: ${{ secrets.SEARCH_API_KEY }}
+      INGEST_PROFILE: weekly
+      INGEST_FORCE_SEARCH: "1"
+      INGEST_TAVILY_TOPIC: general
+      INGEST_TAVILY_DEPTH: advanced
+      INGEST_TAVILY_MAX_RESULTS: "10"
+      # `pnpm ingest` runs with cwd=`packages/ingest`, so keep this path package-relative.
+      INGEST_REPORT_PATH: artifacts/ingest-report.json
+      INGEST_SEED_MODE: off
+      ENTITY_RESOLUTION_MODE: hybrid
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      INGEST_KNOWN_MAX: "30"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,3 +43,10 @@ jobs:
 
       - name: Run ingestion
         run: pnpm ingest
+
+      - name: Upload ingestion report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-report
+          path: packages/ingest/artifacts/ingest-report.json
+          if-no-files-found: warn

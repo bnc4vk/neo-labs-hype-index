@@ -7,6 +7,15 @@ export type SourceKind =
   | "funding_summary"
   | "other";
 
+export type SourceOrigin =
+  | "rss"
+  | "discovery"
+  | "search"
+  | "seed_search"
+  | "allowlist_followup";
+
+export type SourcePipeline = "known_updates" | "new_discovery" | "seed_bootstrap";
+
 export type IngestSource = {
   url: string;
   title?: string | null;
@@ -14,6 +23,9 @@ export type IngestSource = {
   publishedAt?: Date | null;
   snippet?: string | null;
   sourceKind?: SourceKind;
+  origin?: SourceOrigin;
+  pipeline?: SourcePipeline;
+  query?: string | null;
 };
 
 export type IngestCompany = {

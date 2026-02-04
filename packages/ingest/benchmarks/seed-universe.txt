@@ -1,0 +1,27 @@
+# Seed universe for discovery experiments (NOT the benchmark).
+# This is a superset: known-neolabs + additional in-scope candidates.
+
+# Benchmark (oldest -> newest)
+Periodic Labs
+World Labs
+Safe Superintelligence
+Thinking Machine Labs
+Inception Labs
+General Intuition
+Humans&
+Axiom Math
+Flapping Airplanes
+Logical Intelligence
+Unconventional AI
+
+# Additional in-scope candidates
+Reflection AI
+Reka AI
+Physical Intelligence
+Skild AI
+Genesis AI
+Harmonic
+FutureHouse
+Tetsuwan Scientific
+Fundamental Research Labs
+AMI Labs
