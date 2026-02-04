@@ -1,15 +1,15 @@
 # Architecture
 
 ## Stack
-- Next.js (App Router) + TypeScript
-- Tailwind CSS
+- Static HTML/CSS/JS (no framework)
+- Tailwind CDN for styling (no build step)
 - Postgres (Supabase)
 - Prisma ORM
 - Ingestion: Node/TS script run in-repo (no serverless jobs required for MVP)
 - Scheduling: GitHub Actions weekly
 
 ## App shape
-- `apps/web`: Next.js app
+- `apps/web`: static site (index.html + app.js + config.js + style.css)
 - `packages/db`: Prisma schema + DB client
 - `packages/ingest`: ingestion script + source adapters
 
@@ -23,7 +23,7 @@
    - companies
    - sources
    - company_sources
-5. Webapp reads from DB and renders homepage table.
+5. Static webapp reads from Supabase REST API using a publishable key and renders homepage table.
 
 ## Key constraints
 - Idempotent ingestion (safe to rerun)

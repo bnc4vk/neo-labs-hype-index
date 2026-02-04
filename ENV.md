@@ -13,6 +13,10 @@ We are NOT using the Supabase HTTP APIs (no SUPABASE_URL / service role key requ
 ### Provider (Parallel Task API)
 - PARALLEL_API_KEY=... (required for refresh runs)
 
+### Supabase (static webapp)
+- SUPABASE_URL=https://your-project.supabase.co
+- SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+
 ## Optional
 - PARALLEL_BASE_URL=https://api.parallel.ai
 - PARALLEL_PROCESSOR=core

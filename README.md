@@ -14,6 +14,8 @@ pnpm install
 ```bash
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB?sslmode=require
 PARALLEL_API_KEY=your_parallel_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
 3. Run Prisma migrations
@@ -28,17 +30,16 @@ pnpm prisma:migrate
 pnpm prisma:generate
 ```
 
-5. Run ingestion
+5. Run ingestion (bootstrap once, refresh weekly)
 
 ```bash
+pnpm ingest:bootstrap
 pnpm ingest:refresh
 ```
 
-6. Start the webapp
+6. Open the webapp
 
-```bash
-pnpm dev
-```
+Open `apps/web/index.html` directly in a browser, or serve the folder with a static server.
 
 ## Environment variables
 - `DATABASE_URL`: Supabase Postgres connection string (prefer pooler for CI).
@@ -49,6 +50,8 @@ pnpm dev
 - `PARALLEL_POLL_INTERVAL_MS`: polling interval (default 4000).
 - `PARALLEL_MAX_POLL_ATTEMPTS`: max poll attempts (default 20).
 - `INGEST_MODE`: `bootstrap` | `refresh` (defaults to refresh).
+- `SUPABASE_URL`: Supabase project URL for the static site.
+- `SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key for the static site.
 
 ## Prisma commands
 - `pnpm prisma:migrate` — apply migrations.
@@ -60,6 +63,10 @@ pnpm dev
 - `pnpm ingest:refresh` (or `pnpm ingest`) runs the weekly refresh against Parallel Task API for companies already in Supabase.
 - Dynamic fields (`website_url`, `canonical_domain`, `employee_count`, `known_revenue`, `status`, `last_verified_at`) can be updated on each run.
 - Other fields are only filled when missing.
+
+## Static webapp
+The web frontend is a static HTML/CSS/JS bundle under `apps/web`. It reads from Supabase REST
+API using the publishable key in `apps/web/config.js`. No server runtime is required.
 
 ### Seed bootstrap (recommended once)
 To initialize Supabase with the curated seed list:
