@@ -12,7 +12,7 @@
     if (!companiesBody) return;
     companiesBody.innerHTML = `
       <tr>
-        <td colSpan="3" class="py-8 text-center text-ink/60">${message}</td>
+        <td colSpan="5" class="py-8 text-center text-ink/60">${message}</td>
       </tr>
     `;
   };
@@ -101,7 +101,7 @@
   const fetchCompanies = async () => {
     const params = new URLSearchParams({
       select:
-        "id,name,website_url,focus,hq_location,status,employee_count,last_verified_at,updated_at,company_sources:company_sources(source:source_id(url,publisher))",
+        "id,name,website_url,focus,employee_count,known_revenue,last_verified_at,updated_at,company_sources:company_sources(source:source_id(url,publisher))",
       order: "updated_at.desc",
       limit: "200",
     });
@@ -111,7 +111,7 @@
     } catch (error) {
       console.warn("Company join fetch failed, retrying without sources.", error);
       const fallbackParams = new URLSearchParams({
-        select: "id,name,website_url,focus,hq_location,status,employee_count,last_verified_at,updated_at",
+        select: "id,name,website_url,focus,employee_count,known_revenue,last_verified_at,updated_at",
         order: "updated_at.desc",
         limit: "200",
       });
@@ -177,7 +177,9 @@
                 ${domain ? `<a class="text-xs text-ink/40 hover:text-ink" href="${company.website_url}" target="_blank" rel="noreferrer">↗</a>` : ""}
               </div>
             </td>
-            <td class="py-4 pr-4 text-ink/80 truncate max-w-[280px]">${company.focus || "—"}</td>
+            <td class="py-4 pr-4 text-ink/80 whitespace-normal">${company.focus || "—"}</td>
+            <td class="py-4 pr-4 text-ink/80">${company.known_revenue || "—"}</td>
+            <td class="py-4 pr-4 text-ink/80">${company.employee_count ?? "—"}</td>
             <td class="py-4 text-ink/80">${sourcesLabel}</td>
           </tr>
         `;

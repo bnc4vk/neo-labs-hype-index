@@ -35,11 +35,9 @@
     <main class="px-6 pb-24 pt-16 md:px-12">
       <section class="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div class="flex flex-col gap-4">
-          <h1 class="text-4xl font-semibold leading-tight md:text-6xl">Neo-Lab Hype Index</h1>
-          <p class="max-w-2xl text-base text-ink/80 md:text-lg">
-            A weekly-updated directory of US-based AI research‑lab‑style startups; data is refreshed
-            regularly but may be incomplete.
-          </p>
+          <h1 class="text-3xl font-semibold leading-tight text-center md:text-4xl">
+            Neo-Lab Hype Index
+          </h1>
         </div>
 
         <div class="rounded-3xl border border-black/10 bg-white/70 p-6 shadow-soft backdrop-blur">
@@ -51,17 +49,19 @@
           </div>
 
           <div class="mt-6 overflow-x-auto">
-            <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+            <table class="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
               <thead class="border-b border-black/10 text-xs uppercase tracking-[0.18em] text-ink/50">
                 <tr>
-                  <th class="py-3 pr-4">Company</th>
-                  <th class="py-3 pr-4">Focus</th>
-                  <th class="py-3">Sources</th>
+                  <th class="py-3 pr-4 w-[18%]">Company</th>
+                  <th class="py-3 pr-4 w-[42%]">Focus</th>
+                  <th class="py-3 pr-4 w-[12%]">Revenue</th>
+                  <th class="py-3 pr-4 w-[10%]">Size</th>
+                  <th class="py-3 w-[18%]">Sources</th>
                 </tr>
               </thead>
               <tbody id="companies-body">
                 <tr>
-                  <td colSpan="3" class="py-8 text-center text-ink/60">Loading...</td>
+                  <td colSpan="5" class="py-8 text-center text-ink/60">Loading...</td>
                 </tr>
               </tbody>
             </table>
