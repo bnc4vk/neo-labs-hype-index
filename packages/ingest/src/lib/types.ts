@@ -49,6 +49,23 @@ export type ParallelFundingRound = {
   source_url?: string | null;
 };
 
+export type ParallelCitation = {
+  url?: string | null;
+  title?: string | null;
+  publisher?: string | null;
+  excerpt?: string | null;
+  quote?: string | null;
+  snippet?: string | null;
+  text?: string | null;
+};
+
+export type ParallelFieldBasis = {
+  field?: string | null;
+  citations?: ParallelCitation[] | null;
+  confidence?: string | null;
+  reasoning?: string | null;
+};
+
 export type ParallelCompanyOutput = {
   company_id?: string | null;
   company_name?: string | null;
@@ -58,9 +75,17 @@ export type ParallelCompanyOutput = {
   focus?: string | null;
   employee_count?: number | null;
   known_revenue?: string | null;
+  valuation_usd?: number | null;
+  valuation_as_of?: string | null;
+  valuation_source_url?: string | null;
   status?: string | null;
   founded_year?: number | null;
   hq_location?: string | null;
   sources?: ParallelSource[] | null;
   funding_rounds?: ParallelFundingRound[] | null;
+};
+
+export type ParallelTaskResult = {
+  content: ParallelCompanyOutput | null;
+  basis?: ParallelFieldBasis[] | null;
 };

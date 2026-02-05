@@ -1,5 +1,5 @@
 import type { KnownCompany } from "../repo/types";
-import type { ParallelCompanyOutput } from "./types";
+import type { ParallelCompanyOutput, ParallelFieldBasis, ParallelTaskResult } from "./types";
 
 const readPositiveInt = (value: string | undefined, fallback: number) => {
   if (!value) {
@@ -78,6 +78,7 @@ type TaskRunResultResponse = {
   };
   output?: {
     content?: ParallelCompanyOutput;
+    basis?: ParallelFieldBasis[] | null;
   };
 };
 
@@ -107,6 +108,19 @@ const OUTPUT_SCHEMA = {
       },
       employee_count: { type: ["integer", "null"] },
       known_revenue: { type: ["string", "null"] },
+      valuation_usd: {
+        type: ["integer", "null"],
+        description:
+          "Most recent publicly reported post-money valuation in USD. Prefer >= $1B if available; otherwise null.",
+      },
+      valuation_as_of: {
+        type: ["string", "null"],
+        description: "Date of valuation (YYYY-MM-DD) if known.",
+      },
+      valuation_source_url: {
+        type: ["string", "null"],
+        description: "Source URL supporting the valuation_usd if available.",
+      },
       status: {
         type: ["string", "null"],
         description: "One of: active | stealth | inactive | unknown.",
@@ -130,7 +144,7 @@ const OUTPUT_SCHEMA = {
       funding_rounds: {
         type: ["array", "null"],
         description:
-          "Up to 5 notable funding rounds. If exact rounds are unavailable, include a single summary entry with round_type 'total' and amount_usd (total funding to date) and optional valuation_usd.",
+          "Up to 3 notable funding rounds. If exact rounds are unavailable, include a single summary entry with round_type 'total' and amount_usd (total funding to date) and optional valuation_usd.",
         items: {
           type: "object",
           properties: {
@@ -171,6 +185,9 @@ const OUTPUT_SCHEMA = {
       "focus",
       "employee_count",
       "known_revenue",
+      "valuation_usd",
+      "valuation_as_of",
+      "valuation_source_url",
       "status",
       "founded_year",
       "hq_location",
@@ -195,9 +212,10 @@ const INPUT_SCHEMA = {
   },
 };
 
-export const runParallelCompanyTasks = async (
+const runParallelTaskGroup = async (
   companies: KnownCompany[],
-): Promise<Map<string, ParallelCompanyOutput | null>> => {
+  outputSchema: typeof OUTPUT_SCHEMA,
+): Promise<Map<string, ParallelTaskResult>> => {
   const apiKey = ensureApiKey();
   if (companies.length === 0) {
     return new Map();
@@ -241,7 +259,7 @@ export const runParallelCompanyTasks = async (
       body: JSON.stringify({
         default_task_spec: {
           input_schema: INPUT_SCHEMA,
-          output_schema: OUTPUT_SCHEMA,
+          output_schema: outputSchema,
         },
         inputs,
       }),
@@ -275,7 +293,7 @@ export const runParallelCompanyTasks = async (
     await sleep(GROUP_POLL_INTERVAL_MS);
   }
 
-  const results = new Map<string, ParallelCompanyOutput | null>();
+  const results = new Map<string, ParallelTaskResult>();
 
   // Fetch results sequentially to keep load low.
   for (const runId of runIds) {
@@ -298,9 +316,10 @@ export const runParallelCompanyTasks = async (
       }
 
       const content = result.output?.content ?? null;
+      const basis = result.output?.basis ?? null;
       const companyId = content?.company_id ?? null;
       if (companyId) {
-        results.set(companyId, content);
+        results.set(companyId, { content, basis });
       }
     } catch (error) {
       console.warn(`[parallel] run ${runId} result error:`, error instanceof Error ? error.message : error);
@@ -310,9 +329,52 @@ export const runParallelCompanyTasks = async (
   // Ensure all inputs get an entry.
   for (const company of companies) {
     if (!results.has(company.id)) {
-      results.set(company.id, null);
+      results.set(company.id, { content: null, basis: null });
     }
   }
 
   return results;
 };
+
+export const runParallelCompanyTasks = async (
+  companies: KnownCompany[],
+): Promise<Map<string, ParallelTaskResult>> => runParallelTaskGroup(companies, OUTPUT_SCHEMA);
+
+const VALUATION_OUTPUT_SCHEMA = {
+  type: "json",
+  json_schema: {
+    type: "object",
+    properties: {
+      company_id: {
+        type: ["string", "null"],
+        description: "Echo the company_id from input.",
+      },
+      company_name: { type: ["string", "null"] },
+      valuation_usd: {
+        type: ["integer", "null"],
+        description:
+          "Most recent publicly reported post-money valuation in USD. Prefer >= $1B if available; otherwise null.",
+      },
+      valuation_as_of: {
+        type: ["string", "null"],
+        description: "Date of valuation (YYYY-MM-DD) if known.",
+      },
+      valuation_source_url: {
+        type: ["string", "null"],
+        description: "Source URL supporting the valuation_usd if available.",
+      },
+    },
+    required: [
+      "company_id",
+      "company_name",
+      "valuation_usd",
+      "valuation_as_of",
+      "valuation_source_url",
+    ],
+    additionalProperties: false,
+  },
+};
+
+export const runParallelValuationTasks = async (
+  companies: KnownCompany[],
+): Promise<Map<string, ParallelTaskResult>> => runParallelTaskGroup(companies, VALUATION_OUTPUT_SCHEMA);

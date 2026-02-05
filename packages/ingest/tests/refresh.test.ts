@@ -21,24 +21,39 @@ const baseCompany: KnownCompany = {
 describe("applyRefreshUpdate", () => {
   it("overwrites dynamic fields and preserves static fields", () => {
     const { update, fundingRounds } = applyRefreshUpdate(baseCompany, {
-      website_url: "https://new-acme.ai",
-      canonical_domain: "new-acme.ai",
-      description: "New description",
-      focus: "AI",
-      employee_count: 25,
-      known_revenue: "medium",
-      status: "stealth",
-      founded_year: 2022,
-      hq_location: "NYC",
-      sources: [{ url: "https://example.com" }],
-      funding_rounds: [
+      content: {
+        website_url: "https://new-acme.ai",
+        canonical_domain: "new-acme.ai",
+        description: "New description",
+        focus: "AI",
+        employee_count: 25,
+        known_revenue: "medium",
+        valuation_usd: 1200000000,
+        valuation_as_of: "2025-01-01",
+        valuation_source_url: "https://example.com/valuation",
+        status: "stealth",
+        founded_year: 2022,
+        hq_location: "NYC",
+        sources: [{ url: "https://example.com" }],
+        funding_rounds: [
+          {
+            round_type: "seed",
+            amount_usd: 1200000,
+            valuation_usd: 8000000,
+            announced_at: "2024-01-15",
+            investors: ["A", "B"],
+            source_url: "https://example.com/seed",
+          },
+        ],
+      },
+      basis: [
         {
-          round_type: "seed",
-          amount_usd: 1200000,
-          valuation_usd: 8000000,
-          announced_at: "2024-01-15",
-          investors: ["A", "B"],
-          source_url: "https://example.com/seed",
+          field: "valuation_usd",
+          citations: [{ url: "https://example.com/valuation", excerpt: "valued at $1.2B" }],
+        },
+        {
+          field: "funding_rounds",
+          citations: [{ url: "https://example.com/seed", excerpt: "seed round" }],
         },
       ],
     });
@@ -55,7 +70,8 @@ describe("applyRefreshUpdate", () => {
     expect(update?.hqLocation).toBeUndefined();
     expect(update?.lastVerifiedAt).toBeInstanceOf(Date);
 
-    expect(fundingRounds.length).toBe(1);
-    expect(fundingRounds[0].roundType).toBe("seed");
+    expect(fundingRounds.length).toBe(2);
+    expect(fundingRounds.some((round) => round.roundType === "seed")).toBe(true);
+    expect(fundingRounds.some((round) => round.roundType === "valuation")).toBe(true);
   });
 });

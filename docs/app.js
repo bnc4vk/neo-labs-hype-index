@@ -214,7 +214,6 @@
     }
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 16)
       .map(([label, count]) => ({ label, count }));
   };
 
@@ -352,7 +351,27 @@
       lastRefresh.textContent = `Last refresh: ${formatDate(maxDate)}`;
     }
 
-    const rows = filteredCompanies
+    const sortedCompanies = [...filteredCompanies].sort((a, b) => {
+      const entryA = fundingByCompanyId?.get(a.id);
+      const entryB = fundingByCompanyId?.get(b.id);
+      const valA = entryA ? pickValuation(entryA) ?? 0 : 0;
+      const valB = entryB ? pickValuation(entryB) ?? 0 : 0;
+      const valSortA = valA >= MIN_MONEY_USD ? valA : 0;
+      const valSortB = valB >= MIN_MONEY_USD ? valB : 0;
+      if (valSortA !== valSortB) {
+        return valSortB - valSortA;
+      }
+      const fundA = entryA?.total ?? 0;
+      const fundB = entryB?.total ?? 0;
+      const fundSortA = fundA >= MIN_MONEY_USD ? fundA : 0;
+      const fundSortB = fundB >= MIN_MONEY_USD ? fundB : 0;
+      if (fundSortA !== fundSortB) {
+        return fundSortB - fundSortA;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    const rows = sortedCompanies
       .map((company) => {
         const domain = company.website_url ? getDomain(company.website_url) : "";
         const sourceSummary = buildSourceSummary(
@@ -371,8 +390,8 @@
         const fundingEntry = fundingByCompanyId?.get(company.id);
         const totalFunding = fundingEntry?.total ?? null;
         const valuation = pickValuation(fundingEntry);
-        const fundingLabel = formatFundingValue(totalFunding);
         const valuationLabel = formatFundingValue(valuation);
+        const fundingLabel = formatFundingValue(totalFunding);
 
         const tr = document.createElement("tr");
         tr.className = "border-b border-black/5 text-ink/80 bg-white/80";
@@ -403,14 +422,14 @@
             html: `<span class="cell-value">${escapeHtml(size)}</span>`,
           },
           {
-            label: "Total funding",
-            className: "py-4 pr-4 whitespace-nowrap",
-            html: `<span class="cell-value">${escapeHtml(fundingLabel)}</span>`,
-          },
-          {
             label: "Valuation",
             className: "py-4 pr-4 whitespace-nowrap",
             html: `<span class="cell-value">${escapeHtml(valuationLabel)}</span>`,
+          },
+          {
+            label: "Total funding",
+            className: "py-4 pr-4 whitespace-nowrap",
+            html: `<span class="cell-value">${escapeHtml(fundingLabel)}</span>`,
           },
           {
             label: "Sources",
@@ -447,15 +466,31 @@
       return;
     }
 
-    sourcesList.innerHTML = publishers
-      .map(
-        (publisher) => `
-        <span class="rounded-full border border-ink/10 bg-white px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink/70">
-          ${escapeHtml(publisher.label)} · ${publisher.count}
-        </span>
-      `,
-      )
-      .join("\n");
+    const renderList = (list, collapsed) => {
+      sourcesList.innerHTML = list
+        .map(
+          (publisher) => `
+          <span class="rounded-full border border-ink/10 bg-white px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink/70">
+            ${escapeHtml(publisher.label)} · ${publisher.count}
+          </span>
+        `,
+        )
+        .join("\n");
+
+      if (collapsed && publishers.length > list.length) {
+        const more = publishers.length - list.length;
+        const button = document.createElement("button");
+        button.id = "sources-expand";
+        button.type = "button";
+        button.className =
+          "rounded-full border border-ink/10 bg-white px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink/70 hover:text-ink";
+        button.textContent = `+${more} more`;
+        button.addEventListener("click", () => renderList(publishers, false));
+        sourcesList.appendChild(button);
+      }
+    };
+
+    renderList(publishers.slice(0, 5), true);
   };
 
   const load = async () => {

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "fs";
 import { dirname, resolve } from "path";
 import { PrismaRepository } from "./repo/prisma";
 import { loadSeedList } from "./lib/seed";
-import { runParallelCompanyTasks } from "./lib/parallel";
+import { runParallelCompanyTasks, runParallelValuationTasks } from "./lib/parallel";
 import { applyRefreshUpdate } from "./lib/refresh";
 import { normalizeName } from "./lib/normalize";
 import { normalizeUrl } from "./lib/url";
@@ -97,15 +97,21 @@ const runRefresh = async () => {
 
   let updated = 0;
   let failed = 0;
+  const missingValuation: typeof companies = [];
 
   for (const company of companies) {
     console.log(`[refresh] apply ${company.name}`);
     try {
-      const output = outputsByCompanyId.get(company.id) ?? null;
-      const { update, sources, fundingRounds } = applyRefreshUpdate(company, output);
+      const result = outputsByCompanyId.get(company.id) ?? null;
+      const { update, sources, fundingRounds } = applyRefreshUpdate(company, result);
       if (!update) {
         failed += 1;
         continue;
+      }
+
+      const hasValuation = fundingRounds.some((round) => round.roundType === "valuation");
+      if (!hasValuation) {
+        missingValuation.push(company);
       }
 
       const sourceIdByUrl = new Map<string, string>();
@@ -150,6 +156,48 @@ const runRefresh = async () => {
         `[refresh] failed for ${company.name}:`,
         error instanceof Error ? error.message : error,
       );
+    }
+  }
+
+  if (missingValuation.length > 0) {
+    console.log(`[refresh] valuation-only pass for ${missingValuation.length} companies`);
+    const valuationResults = await runParallelValuationTasks(missingValuation);
+
+    for (const company of missingValuation) {
+      try {
+        const result = valuationResults.get(company.id) ?? null;
+        const { update, fundingRounds } = applyRefreshUpdate(company, result);
+        if (!update || fundingRounds.length === 0) {
+          continue;
+        }
+
+        await repo.updateCompanyFromRefresh(company.id, update);
+
+        for (const round of fundingRounds) {
+          let sourceId = round.sourceId ?? null;
+          if (!sourceId && round.sourceUrl) {
+            const normalizedUrl = normalizeUrl(round.sourceUrl) ?? round.sourceUrl;
+            if (normalizedUrl) {
+              const upserted = await repo.upsertSource({ url: normalizedUrl });
+              sourceId = upserted.record.id;
+            }
+          }
+
+          await repo.upsertFundingRound(company.id, {
+            ...round,
+            sourceId,
+          });
+
+          if (sourceId) {
+            await repo.linkCompanySource(company.id, sourceId, "funding_summary");
+          }
+        }
+      } catch (error) {
+        console.warn(
+          `[refresh] valuation-only failed for ${company.name}:`,
+          error instanceof Error ? error.message : error,
+        );
+      }
     }
   }
 
