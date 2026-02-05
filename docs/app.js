@@ -3,8 +3,9 @@
   const SUPABASE_URL = config.SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY = config.SUPABASE_PUBLISHABLE_KEY;
 
-  const TABLE_COLUMNS = 7;
+  const TABLE_COLUMNS = 6;
   const MIN_MONEY_USD = 100000;
+  const MAX_REPORTED_REVENUE_USD = 1000000;
 
   const companiesBody = document.getElementById("companies-body");
   const companiesCount = document.getElementById("companies-count");
@@ -125,10 +126,10 @@
     return amount;
   };
 
-  const formatRevenue = (value) => {
-    if (!value) return "Presumed $0";
+  const extractReportedRevenueUsd = (value) => {
+    if (!value) return null;
     const raw = String(value).trim();
-    if (!raw) return "Presumed $0";
+    if (!raw) return null;
     const lowered = raw.toLowerCase();
     if (
       lowered.includes("unknown") ||
@@ -141,16 +142,21 @@
       lowered.includes("valuation") ||
       lowered.includes("funding")
     ) {
-      return "Presumed $0";
+      return null;
     }
     const parsed = parseMoney(raw);
     if (!parsed || parsed <= 0) {
-      return "Presumed $0";
+      return null;
     }
-    if (parsed < MIN_MONEY_USD) {
-      return "Presumed $0";
+    return parsed;
+  };
+
+  const isRevenueOverThreshold = (value) => {
+    const revenue = extractReportedRevenueUsd(value);
+    if (!revenue) {
+      return false;
     }
-    return formatCurrencyShort(parsed);
+    return revenue >= MAX_REPORTED_REVENUE_USD;
   };
 
   const formatEmployeeCount = (value) => {
@@ -315,7 +321,11 @@
   const renderCompanies = (companies, fundingByCompanyId) => {
     if (!companiesBody) return;
 
-    if (!companies.length) {
+    const filteredCompanies = (companies || []).filter(
+      (company) => !isRevenueOverThreshold(company.known_revenue),
+    );
+
+    if (!filteredCompanies.length) {
       setCompaniesMessage("No companies found yet. Run ingestion to populate the index.");
       if (companiesCount) {
         companiesCount.textContent = "0 tracked";
@@ -327,11 +337,11 @@
     }
 
     if (companiesCount) {
-      companiesCount.textContent = `${companies.length} tracked`;
+      companiesCount.textContent = `${filteredCompanies.length} tracked`;
     }
 
     if (lastRefresh) {
-      const maxDate = companies.reduce((acc, company) => {
+      const maxDate = filteredCompanies.reduce((acc, company) => {
         const candidate = company.last_verified_at || company.updated_at;
         if (!candidate) return acc;
         const value = new Date(candidate);
@@ -342,7 +352,7 @@
       lastRefresh.textContent = `Last refresh: ${formatDate(maxDate)}`;
     }
 
-    const rows = companies
+    const rows = filteredCompanies
       .map((company) => {
         const domain = company.website_url ? getDomain(company.website_url) : "";
         const sourceSummary = buildSourceSummary(
@@ -357,7 +367,6 @@
           ? `${sourceTop.text}${sourceSummary.remaining > 0 ? ` +${sourceSummary.remaining}` : ""}`
           : "—";
         const focusInfo = formatFocus(company.focus);
-        const revenue = formatRevenue(company.known_revenue);
         const size = formatEmployeeCount(company.employee_count);
         const fundingEntry = fundingByCompanyId?.get(company.id);
         const totalFunding = fundingEntry?.total ?? null;
@@ -365,32 +374,68 @@
         const fundingLabel = formatFundingValue(totalFunding);
         const valuationLabel = formatFundingValue(valuation);
 
-        return `
-          <tr class="border-b border-black/5 text-ink/80 bg-white/80">
-            <td class="py-4 pr-4 sticky left-0 z-[5] bg-white/90 backdrop-blur">
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-black/5 text-ink/80 bg-white/80";
+
+        const cells = [
+          {
+            label: "Company",
+            className: "py-4 pr-4 sticky left-0 z-[5] bg-white/90 backdrop-blur",
+            html: `
               <div class="flex items-center gap-2">
-                <span class="font-medium text-ink">${escapeHtml(company.name)}</span>
+                <span class="font-medium text-ink cell-value">${escapeHtml(company.name)}</span>
                 ${domain ? `<a class="text-xs text-ink/40 hover:text-ink" href="${company.website_url}" target="_blank" rel="noreferrer">↗</a>` : ""}
               </div>
-            </td>
-            <td class="py-4 pr-4 whitespace-normal leading-relaxed">
-              <span class="focus-clamp"${focusInfo.truncated ? ` title="${escapeHtml(focusInfo.full)}"` : ""}>
+            `,
+          },
+          {
+            label: "Focus",
+            className: "py-4 pr-4 whitespace-normal leading-relaxed",
+            html: `
+              <span class="focus-clamp cell-value"${focusInfo.truncated ? ` title="${escapeHtml(focusInfo.full)}"` : ""}>
                 ${escapeHtml(focusInfo.text)}
               </span>
-            </td>
-            <td class="py-4 pr-4 whitespace-nowrap">${escapeHtml(revenue)}</td>
-            <td class="py-4 pr-4 whitespace-nowrap">${escapeHtml(size)}</td>
-            <td class="py-4 pr-4 whitespace-nowrap">${escapeHtml(fundingLabel)}</td>
-            <td class="py-4 pr-4 whitespace-nowrap">${escapeHtml(valuationLabel)}</td>
-            <td class="py-4 whitespace-nowrap" title="${escapeHtml(sourceSummary.top || "")}">
-              ${escapeHtml(sourcesLabel)}
-            </td>
-          </tr>
-        `;
-      })
-      .join("\n");
+            `,
+          },
+          {
+            label: "Size",
+            className: "py-4 pr-4 whitespace-nowrap",
+            html: `<span class="cell-value">${escapeHtml(size)}</span>`,
+          },
+          {
+            label: "Total funding",
+            className: "py-4 pr-4 whitespace-nowrap",
+            html: `<span class="cell-value">${escapeHtml(fundingLabel)}</span>`,
+          },
+          {
+            label: "Valuation",
+            className: "py-4 pr-4 whitespace-nowrap",
+            html: `<span class="cell-value">${escapeHtml(valuationLabel)}</span>`,
+          },
+          {
+            label: "Sources",
+            className: "py-4 whitespace-nowrap",
+            html: `<span class="cell-value">${escapeHtml(sourcesLabel)}</span>`,
+            title: sourceSummary.top || "",
+          },
+        ];
 
-    companiesBody.innerHTML = rows;
+        cells.forEach((cell) => {
+          const td = document.createElement("td");
+          td.dataset.label = cell.label;
+          td.className = cell.className;
+          if (cell.title) {
+            td.title = cell.title;
+          }
+          td.innerHTML = cell.html;
+          tr.appendChild(td);
+        });
+
+        return tr;
+      });
+
+    companiesBody.innerHTML = "";
+    rows.forEach((row) => companiesBody.appendChild(row));
   };
 
   const renderSources = (sources) => {

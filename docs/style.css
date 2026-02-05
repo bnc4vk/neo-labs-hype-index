@@ -47,3 +47,89 @@ h3 {
   border: 2px solid rgba(245, 241, 234, 0.9);
   background-clip: padding-box;
 }
+
+@media (max-width: 768px) {
+  .table-scroll {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .stacked-table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .stacked-table thead {
+    display: none;
+  }
+
+  .stacked-table tbody,
+  .stacked-table tr,
+  .stacked-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .stacked-table tr {
+    margin-bottom: 14px;
+    border: 1px solid rgba(28, 26, 22, 0.08);
+    border-radius: 18px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .stacked-table td {
+    display: grid;
+    grid-template-columns: minmax(90px, 40%) minmax(0, 1fr);
+    align-items: start;
+    column-gap: 12px;
+    padding: 6px 0;
+    position: static !important;
+    background: transparent !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    min-height: 24px;
+    color: rgba(28, 26, 22, 0.85);
+  }
+
+  .stacked-table td::before {
+    content: attr(data-label);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(28, 26, 22, 0.45);
+    display: block;
+  }
+
+  .stacked-table .cell-value {
+    min-width: 0;
+    text-align: left;
+    color: rgba(28, 26, 22, 0.9);
+    display: block;
+  }
+
+  .stacked-table td[data-label="Focus"] .cell-value {
+    text-align: left;
+  }
+
+  .stacked-table td[data-label="Focus"] {
+    display: none;
+  }
+
+  .stacked-table td[data-label="Company"]::before {
+    content: "Company";
+  }
+
+  .stacked-table td[data-label="Company"] {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .stacked-table td[data-label="Company"] > div {
+    justify-content: flex-start;
+  }
+
+  .stacked-table td[data-label="Focus"] .focus-clamp {
+    -webkit-line-clamp: 3;
+  }
+}

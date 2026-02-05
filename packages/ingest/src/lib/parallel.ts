@@ -136,7 +136,10 @@ const OUTPUT_SCHEMA = {
           properties: {
             round_type: { type: ["string", "null"] },
             amount_usd: { type: ["integer", "null"] },
-            valuation_usd: { type: ["integer", "null"] },
+            valuation_usd: {
+              type: ["integer", "null"],
+              description: "Post-money valuation in USD if publicly reported; otherwise null.",
+            },
             announced_at: {
               type: ["string", "null"],
               description: "YYYY-MM-DD if known.",
