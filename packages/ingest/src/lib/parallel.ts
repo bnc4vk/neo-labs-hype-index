@@ -100,7 +100,11 @@ const OUTPUT_SCHEMA = {
         description: "Canonical domain for the official website.",
       },
       description: { type: ["string", "null"] },
-      focus: { type: ["string", "null"] },
+      focus: {
+        type: ["string", "null"],
+        description:
+          "One concise sentence describing the company's focus. Soft limit ~120 characters. No funding, valuation, or revenue details.",
+      },
       employee_count: { type: ["integer", "null"] },
       known_revenue: { type: ["string", "null"] },
       status: {
@@ -123,6 +127,37 @@ const OUTPUT_SCHEMA = {
           additionalProperties: false,
         },
       },
+      funding_rounds: {
+        type: ["array", "null"],
+        description:
+          "Up to 5 notable funding rounds. If exact rounds are unavailable, include a single summary entry with round_type 'total' and amount_usd (total funding to date) and optional valuation_usd.",
+        items: {
+          type: "object",
+          properties: {
+            round_type: { type: ["string", "null"] },
+            amount_usd: { type: ["integer", "null"] },
+            valuation_usd: { type: ["integer", "null"] },
+            announced_at: {
+              type: ["string", "null"],
+              description: "YYYY-MM-DD if known.",
+            },
+            investors: {
+              type: ["array", "null"],
+              items: { type: "string" },
+            },
+            source_url: { type: ["string", "null"] },
+          },
+          required: [
+            "round_type",
+            "amount_usd",
+            "valuation_usd",
+            "announced_at",
+            "investors",
+            "source_url",
+          ],
+          additionalProperties: false,
+        },
+      },
     },
     required: [
       "company_id",
@@ -137,6 +172,7 @@ const OUTPUT_SCHEMA = {
       "founded_year",
       "hq_location",
       "sources",
+      "funding_rounds",
     ],
     additionalProperties: false,
   },

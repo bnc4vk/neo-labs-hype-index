@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { mergeAliases, normalizeName } from "../lib/normalize";
 import { normalizeUrl } from "../lib/url";
-import type { RefreshUpdate, SeedCompany, SourceInput } from "../lib/types";
+import type { FundingRoundInput, RefreshUpdate, SeedCompany, SourceInput } from "../lib/types";
 import type { IngestRepository, KnownCompany, UpsertCompanyResult, UpsertSourceResult } from "./types";
 
 export type MemoryCompany = {
@@ -38,10 +38,23 @@ export type MemoryCompanySource = {
   updated_at: Date;
 };
 
+export type MemoryFundingRound = {
+  id: string;
+  company_id: string;
+  round_type?: string | null;
+  amount_usd?: number | null;
+  valuation_usd?: number | null;
+  announced_at?: Date | null;
+  investors: string[];
+  source_id?: string | null;
+  updated_at: Date;
+};
+
 export class MemoryRepository implements IngestRepository {
   companies: MemoryCompany[] = [];
   sources: MemorySource[] = [];
   companySources: MemoryCompanySource[] = [];
+  fundingRounds: MemoryFundingRound[] = [];
 
   async listCompanies(): Promise<KnownCompany[]> {
     return [...this.companies]
@@ -170,6 +183,49 @@ export class MemoryRepository implements IngestRepository {
       company_id: companyId,
       source_id: sourceId,
       source_kind: sourceKind,
+      updated_at: new Date(),
+    });
+  }
+
+  async upsertFundingRound(companyId: string, input: FundingRoundInput): Promise<void> {
+    const announcedAt = input.announcedAt ?? null;
+    let existing = null;
+
+    if (announcedAt) {
+      existing = this.fundingRounds.find(
+        (round) =>
+          round.company_id === companyId &&
+          round.round_type === (input.roundType ?? null) &&
+          round.announced_at?.toISOString().slice(0, 10) === announcedAt.toISOString().slice(0, 10),
+      );
+    }
+
+    if (!existing) {
+      existing = this.fundingRounds.find(
+        (round) =>
+          round.company_id === companyId &&
+          round.round_type === (input.roundType ?? null) &&
+          round.amount_usd === (input.amountUsd ?? null) &&
+          round.valuation_usd === (input.valuationUsd ?? null),
+      );
+    }
+
+    if (existing) {
+      existing.investors = input.investors ?? existing.investors;
+      existing.source_id = input.sourceId ?? existing.source_id ?? null;
+      existing.updated_at = new Date();
+      return;
+    }
+
+    this.fundingRounds.push({
+      id: randomUUID(),
+      company_id: companyId,
+      round_type: input.roundType ?? null,
+      amount_usd: input.amountUsd ?? null,
+      valuation_usd: input.valuationUsd ?? null,
+      announced_at: announcedAt,
+      investors: input.investors ?? [],
+      source_id: input.sourceId ?? null,
       updated_at: new Date(),
     });
   }

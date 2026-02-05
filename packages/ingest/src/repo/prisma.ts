@@ -1,7 +1,7 @@
 import { prisma } from "@neolabs/db";
 import { mergeAliases, normalizeName, pickDefined } from "../lib/normalize";
 import { normalizeUrl } from "../lib/url";
-import type { RefreshUpdate, SeedCompany, SourceInput } from "../lib/types";
+import type { FundingRoundInput, RefreshUpdate, SeedCompany, SourceInput } from "../lib/types";
 import type { IngestRepository, KnownCompany, UpsertCompanyResult, UpsertSourceResult } from "./types";
 
 const withUpdatedAt = <T extends Record<string, unknown>>(data: T) =>
@@ -156,6 +156,64 @@ export class PrismaRepository implements IngestRepository {
         source_kind: sourceKind,
       }),
       update: withUpdatedAt({}),
+    });
+  }
+
+  async upsertFundingRound(companyId: string, input: FundingRoundInput): Promise<void> {
+    const announcedAt = input.announcedAt ?? null;
+    const roundType = sanitizeText(input.roundType ?? undefined) ?? null;
+    const amountUsd = input.amountUsd !== null && input.amountUsd !== undefined
+      ? BigInt(Math.round(input.amountUsd))
+      : null;
+    const valuationUsd = input.valuationUsd !== null && input.valuationUsd !== undefined
+      ? BigInt(Math.round(input.valuationUsd))
+      : null;
+    const investors = input.investors ?? [];
+    const sourceId = input.sourceId ?? null;
+
+    let existing = null;
+    if (announcedAt) {
+      existing = await prisma.fundingRound.findFirst({
+        where: {
+          company_id: companyId,
+          round_type: roundType,
+          announced_at: announcedAt,
+        },
+      });
+    }
+
+    if (!existing) {
+      existing = await prisma.fundingRound.findFirst({
+        where: {
+          company_id: companyId,
+          round_type: roundType,
+          amount_usd: amountUsd,
+          valuation_usd: valuationUsd,
+        },
+      });
+    }
+
+    if (existing) {
+      await prisma.fundingRound.update({
+        where: { id: existing.id },
+        data: withUpdatedAt({
+          investors: investors.length ? investors : existing.investors,
+          source_id: sourceId ?? existing.source_id,
+        }),
+      });
+      return;
+    }
+
+    await prisma.fundingRound.create({
+      data: withUpdatedAt({
+        company_id: companyId,
+        round_type: roundType,
+        amount_usd: amountUsd ?? undefined,
+        valuation_usd: valuationUsd ?? undefined,
+        announced_at: announcedAt ?? undefined,
+        investors,
+        source_id: sourceId ?? undefined,
+      }),
     });
   }
 }

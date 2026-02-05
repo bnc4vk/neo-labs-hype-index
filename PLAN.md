@@ -94,3 +94,4 @@
 - Dynamic fields (`website_url`, `canonical_domain`, `employee_count`, `known_revenue`, `status`, `last_verified_at`) can be overwritten; other fields only fill when missing.
 - Sources returned by Parallel are stored in `sources` and linked via `company_sources` to keep the homepage “Sources” section populated.
 - Frontend converted to a static HTML/CSS/JS bundle (`docs`) that reads from Supabase REST with a publishable key.
+- When starting a temporary local server for UI review (e.g. `python3 -m http.server 3000`), always terminate it after capturing screenshots to avoid keeping port `3000` occupied.

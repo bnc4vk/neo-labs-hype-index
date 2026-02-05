@@ -1,5 +1,5 @@
 import type { KnownCompany } from "../repo/types";
-import type { ParallelCompanyOutput, RefreshUpdate, SourceInput } from "./types";
+import type { FundingRoundInput, ParallelCompanyOutput, RefreshUpdate, SourceInput } from "./types";
 import { getHostname, normalizeUrl } from "./url";
 
 const normalizeOptional = (value?: string | null) => {
@@ -31,12 +31,32 @@ const coercePositiveInt = (value?: number | null) => {
   return Math.round(value);
 };
 
+const coercePositiveMoney = (value?: number | null) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  return Math.round(value);
+};
+
+const normalizeInvestors = (investors?: string[] | null) => {
+  if (!Array.isArray(investors)) {
+    return [];
+  }
+  const normalized = investors
+    .map((entry) => (entry ?? "").trim())
+    .filter((entry) => entry.length > 0);
+  return Array.from(new Set(normalized)).slice(0, 12);
+};
+
 export const applyRefreshUpdate = (
   existing: KnownCompany,
   output: ParallelCompanyOutput | null,
-): { update: RefreshUpdate | null; sources: SourceInput[] } => {
+): { update: RefreshUpdate | null; sources: SourceInput[]; fundingRounds: FundingRoundInput[] } => {
   if (!output) {
-    return { update: null, sources: [] };
+    return { update: null, sources: [], fundingRounds: [] };
   }
 
   const websiteUrl = normalizeOptional(output.website_url);
@@ -103,5 +123,45 @@ export const applyRefreshUpdate = (
     });
   }
 
-  return { update, sources: Array.from(sourcesByUrl.values()).slice(0, 10) };
+  const roundsByKey = new Map<string, FundingRoundInput>();
+  const rawRounds = Array.isArray(output.funding_rounds) ? output.funding_rounds : [];
+  for (const round of rawRounds) {
+    const roundType = normalizeOptional(round.round_type);
+    const amountUsd = coercePositiveMoney(round.amount_usd);
+    const valuationUsd = coercePositiveMoney(round.valuation_usd);
+    const announcedAt = round.announced_at ? new Date(round.announced_at) : null;
+    const validAnnouncedAt = Number.isNaN(announcedAt?.getTime() ?? NaN) ? null : announcedAt;
+    const investors = normalizeInvestors(round.investors);
+    const sourceUrl = normalizeOptional(round.source_url);
+
+    if (!roundType && !amountUsd && !valuationUsd) {
+      continue;
+    }
+
+    const key = [
+      roundType ?? "",
+      validAnnouncedAt ? validAnnouncedAt.toISOString().slice(0, 10) : "",
+      amountUsd ?? "",
+      valuationUsd ?? "",
+    ].join("|");
+
+    if (roundsByKey.has(key)) {
+      continue;
+    }
+
+    roundsByKey.set(key, {
+      roundType,
+      amountUsd,
+      valuationUsd,
+      announcedAt: validAnnouncedAt,
+      investors: investors.length ? investors : null,
+      sourceUrl,
+    });
+  }
+
+  return {
+    update,
+    sources: Array.from(sourcesByUrl.values()).slice(0, 10),
+    fundingRounds: Array.from(roundsByKey.values()).slice(0, 8),
+  };
 };

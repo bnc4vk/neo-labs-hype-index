@@ -1,4 +1,4 @@
-import type { RefreshUpdate, SeedCompany, SourceInput } from "../lib/types";
+import type { FundingRoundInput, RefreshUpdate, SeedCompany, SourceInput } from "../lib/types";
 
 export type KnownCompany = {
   id: string;
@@ -37,4 +37,5 @@ export interface IngestRepository {
   updateCompanyFromRefresh(companyId: string, update: RefreshUpdate): Promise<void>;
   upsertSource(source: SourceInput): Promise<UpsertSourceResult>;
   linkCompanySource(companyId: string, sourceId: string, sourceKind: string): Promise<void>;
+  upsertFundingRound(companyId: string, input: FundingRoundInput): Promise<void>;
 }

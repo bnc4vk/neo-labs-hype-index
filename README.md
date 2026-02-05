@@ -68,6 +68,8 @@ Open `docs/index.html` directly in a browser, or serve the folder with a static 
 The web frontend is a static HTML/CSS/JS bundle under `docs`. It reads from Supabase REST
 API using the publishable key in `docs/config.js`. No server runtime is required.
 
+Note: during UI review it can be convenient to run a one-off server like `python3 -m http.server 3000`. Make sure to stop it afterward so it doesn't keep port `3000` occupied (otherwise `pnpm dev` will choose a different port).
+
 ### Seed bootstrap (recommended once)
 To initialize Supabase with the curated seed list:
 

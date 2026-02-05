@@ -17,3 +17,33 @@ h3 {
 ::selection {
   background: rgba(194, 75, 42, 0.2);
 }
+
+.table-scroll {
+  max-height: calc(15 * 3.25rem + 3rem);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 26, 22, 0.25) rgba(28, 26, 22, 0.06);
+}
+
+.focus-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.table-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: rgba(28, 26, 22, 0.06);
+  border-radius: 999px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(28, 26, 22, 0.3);
+  border-radius: 999px;
+  border: 2px solid rgba(245, 241, 234, 0.9);
+  background-clip: padding-box;
+}

@@ -20,7 +20,7 @@ const baseCompany: KnownCompany = {
 
 describe("applyRefreshUpdate", () => {
   it("overwrites dynamic fields and preserves static fields", () => {
-    const { update } = applyRefreshUpdate(baseCompany, {
+    const { update, fundingRounds } = applyRefreshUpdate(baseCompany, {
       website_url: "https://new-acme.ai",
       canonical_domain: "new-acme.ai",
       description: "New description",
@@ -31,6 +31,16 @@ describe("applyRefreshUpdate", () => {
       founded_year: 2022,
       hq_location: "NYC",
       sources: [{ url: "https://example.com" }],
+      funding_rounds: [
+        {
+          round_type: "seed",
+          amount_usd: 1200000,
+          valuation_usd: 8000000,
+          announced_at: "2024-01-15",
+          investors: ["A", "B"],
+          source_url: "https://example.com/seed",
+        },
+      ],
     });
 
     expect(update?.websiteUrl).toBe("https://new-acme.ai");
@@ -44,5 +54,8 @@ describe("applyRefreshUpdate", () => {
     expect(update?.foundedYear).toBeUndefined();
     expect(update?.hqLocation).toBeUndefined();
     expect(update?.lastVerifiedAt).toBeInstanceOf(Date);
+
+    expect(fundingRounds.length).toBe(1);
+    expect(fundingRounds[0].roundType).toBe("seed");
   });
 });

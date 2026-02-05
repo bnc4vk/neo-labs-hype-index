@@ -5,6 +5,7 @@ import { loadSeedList } from "./lib/seed";
 import { runParallelCompanyTasks } from "./lib/parallel";
 import { applyRefreshUpdate } from "./lib/refresh";
 import { normalizeName } from "./lib/normalize";
+import { normalizeUrl } from "./lib/url";
 
 const requireEnv = (key: string) => {
   if (!process.env[key]) {
@@ -101,18 +102,47 @@ const runRefresh = async () => {
     console.log(`[refresh] apply ${company.name}`);
     try {
       const output = outputsByCompanyId.get(company.id) ?? null;
-      const { update, sources } = applyRefreshUpdate(company, output);
+      const { update, sources, fundingRounds } = applyRefreshUpdate(company, output);
       if (!update) {
         failed += 1;
         continue;
       }
+
+      const sourceIdByUrl = new Map<string, string>();
 
       await repo.updateCompanyFromRefresh(company.id, update);
       updated += 1;
 
       for (const source of sources) {
         const result = await repo.upsertSource(source);
+        sourceIdByUrl.set(result.record.url, result.record.id);
         await repo.linkCompanySource(company.id, result.record.id, "overview");
+      }
+
+      for (const round of fundingRounds) {
+        let sourceId = round.sourceId ?? null;
+        if (!sourceId && round.sourceUrl) {
+          const normalizedUrl = normalizeUrl(round.sourceUrl) ?? round.sourceUrl;
+          if (normalizedUrl) {
+            const cached = sourceIdByUrl.get(normalizedUrl);
+            if (cached) {
+              sourceId = cached;
+            } else {
+              const result = await repo.upsertSource({ url: normalizedUrl });
+              sourceId = result.record.id;
+              sourceIdByUrl.set(result.record.url, result.record.id);
+            }
+          }
+        }
+
+        await repo.upsertFundingRound(company.id, {
+          ...round,
+          sourceId,
+        });
+
+        if (sourceId) {
+          await repo.linkCompanySource(company.id, sourceId, "funding_summary");
+        }
       }
     } catch (error) {
       failed += 1;
