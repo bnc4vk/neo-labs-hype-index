@@ -92,6 +92,9 @@
 - (2026-02-25) `pnpm lint` (pass; workflow pnpm-version conflict fix verification)
 - (2026-02-25) `pnpm test` (pass; workflow pnpm-version conflict fix verification)
 - (2026-02-25) `pnpm build` (pass; workflow pnpm-version conflict fix verification)
+- (2026-02-25) `pnpm lint` (pass; root ingest script alias fix verification)
+- (2026-02-25) `pnpm test` (pass; root ingest script alias fix verification)
+- (2026-02-25) `pnpm build` (pass; root ingest script alias fix verification)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
@@ -103,3 +106,4 @@
 - When starting a temporary local server for UI review (e.g. `python3 -m http.server 3000`), always terminate it after capturing screenshots to avoid keeping port `3000` occupied.
 - GitHub Actions must install `pnpm` before `actions/setup-node` when using `cache: "pnpm"`; otherwise setup-node fails because `pnpm` is not yet on `PATH`.
 - GitHub Actions should not also pin `pnpm/action-setup` `version` when `package.json` already pins `packageManager`; use one source of truth to avoid `ERR_PNPM_BAD_PM_VERSION`.
+- Root `package.json` must expose `ingest:bootstrap` and `ingest:refresh` aliases because README and CI invoke those script names at the workspace root.

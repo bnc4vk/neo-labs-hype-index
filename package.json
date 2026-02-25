@@ -8,6 +8,8 @@
     "lint": "node -e \"console.log('static lint ok')\"",
     "test": "pnpm --filter ingest test",
     "ingest": "pnpm --filter ingest ingest",
+    "ingest:bootstrap": "pnpm --filter ingest ingest:bootstrap",
+    "ingest:refresh": "pnpm --filter ingest ingest:refresh",
     "prisma:generate": "pnpm --filter db prisma generate",
     "prisma:migrate": "pnpm --filter db prisma migrate dev",
     "prisma:studio": "pnpm --filter db prisma studio"
