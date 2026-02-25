@@ -86,6 +86,9 @@
 - (2026-02-04) `pnpm lint` (pass)
 - (2026-02-04) `pnpm test` (pass; added seed tests + LLM plumbing)
 - (2026-02-04) `pnpm build` (pass; warning about `serverExternalPackages` in `next.config.mjs`)
+- (2026-02-25) `pnpm lint` (pass; workflow fix verification)
+- (2026-02-25) `pnpm test` (pass; workflow fix verification)
+- (2026-02-25) `pnpm build` (pass; workflow fix verification)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
@@ -95,3 +98,4 @@
 - Sources returned by Parallel are stored in `sources` and linked via `company_sources` to keep the homepage “Sources” section populated.
 - Frontend converted to a static HTML/CSS/JS bundle (`docs`) that reads from Supabase REST with a publishable key.
 - When starting a temporary local server for UI review (e.g. `python3 -m http.server 3000`), always terminate it after capturing screenshots to avoid keeping port `3000` occupied.
+- GitHub Actions must install `pnpm` before `actions/setup-node` when using `cache: "pnpm"`; otherwise setup-node fails because `pnpm` is not yet on `PATH`.
