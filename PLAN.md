@@ -95,6 +95,10 @@
 - (2026-02-25) `pnpm lint` (pass; root ingest script alias fix verification)
 - (2026-02-25) `pnpm test` (pass; root ingest script alias fix verification)
 - (2026-02-25) `pnpm build` (pass; root ingest script alias fix verification)
+- (2026-02-25) `pnpm prisma:generate` (pass; workflow Prisma client generation fix verification)
+- (2026-02-25) `pnpm lint` (pass; workflow Prisma client generation fix verification)
+- (2026-02-25) `pnpm test` (pass; workflow Prisma client generation fix verification)
+- (2026-02-25) `pnpm build` (pass; workflow Prisma client generation fix verification)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
@@ -107,3 +111,4 @@
 - GitHub Actions must install `pnpm` before `actions/setup-node` when using `cache: "pnpm"`; otherwise setup-node fails because `pnpm` is not yet on `PATH`.
 - GitHub Actions should not also pin `pnpm/action-setup` `version` when `package.json` already pins `packageManager`; use one source of truth to avoid `ERR_PNPM_BAD_PM_VERSION`.
 - Root `package.json` must expose `ingest:bootstrap` and `ingest:refresh` aliases because README and CI invoke those script names at the workspace root.
+- GitHub Actions must run `pnpm prisma:generate` after install and before ingestion so `@prisma/client` has generated runtime files (`.prisma/client/*`) in CI.

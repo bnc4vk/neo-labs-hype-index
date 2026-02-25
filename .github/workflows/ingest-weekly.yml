@@ -27,5 +27,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
       - name: Run ingestion
         run: pnpm ingest:refresh
