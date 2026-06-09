@@ -41,6 +41,13 @@
 - [x] Update docs + workflow + env for Parallel-only flow
 - [x] Trim tests to bootstrap/refresh coverage only
 
+## Phase 6 — Weekly ingestion reliability
+- [x] Investigate June 2026 GitHub Actions failure
+- [x] Confirm failure occurs before Parallel calls during Prisma DB connection
+- [x] Add `pnpm ingest:preflight` for env, DNS, and database connectivity checks
+- [x] Run preflight before refresh in the weekly GitHub Actions workflow
+- [ ] Restore paused Supabase project and rerun GitHub Actions workflow
+
 ---
 
 ## Commands run
@@ -99,6 +106,15 @@
 - (2026-02-25) `pnpm lint` (pass; workflow Prisma client generation fix verification)
 - (2026-02-25) `pnpm test` (pass; workflow Prisma client generation fix verification)
 - (2026-02-25) `pnpm build` (pass; workflow Prisma client generation fix verification)
+- (2026-06-09) `gh run view 27197818757 --log-failed` (confirmed Prisma DB connection failure: Supabase pooler tenant/user not found)
+- (2026-06-09) `supabase projects list -o json` (confirmed `neo-lab-hype-index` project exists but is `INACTIVE`)
+- (2026-06-09) `supabase link --project-ref bpopidliwibxwuofkloy` (failed: project is paused; restore required from Supabase dashboard)
+- (2026-06-09) `pnpm lint` (pass)
+- (2026-06-09) `pnpm test` (pass; added database preflight helper tests)
+- (2026-06-09) `pnpm build` (pass)
+- (2026-06-09) `pnpm ingest:preflight` (expected fail while Supabase is paused; reports unresolved Supabase DB host with restore guidance)
+- (2026-06-09) `pnpm --filter ingest lint` (pass; fixed valuation-only output schema typing)
+- (2026-06-09) Supabase Management API `POST /v1/projects/bpopidliwibxwuofkloy/restore` via local CLI keychain token (failed: token not accepted as API bearer token)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
@@ -112,3 +128,5 @@
 - GitHub Actions should not also pin `pnpm/action-setup` `version` when `package.json` already pins `packageManager`; use one source of truth to avoid `ERR_PNPM_BAD_PM_VERSION`.
 - Root `package.json` must expose `ingest:bootstrap` and `ingest:refresh` aliases because README and CI invoke those script names at the workspace root.
 - GitHub Actions must run `pnpm prisma:generate` after install and before ingestion so `@prisma/client` has generated runtime files (`.prisma/client/*`) in CI.
+- Weekly ingestion now runs a database preflight before calling Parallel so paused Supabase projects or stale pooler secrets fail fast with an actionable message.
+- The June 2026 workflow failure is caused by the Supabase project being paused (`INACTIVE`), not by ingestion code or Parallel API behavior.

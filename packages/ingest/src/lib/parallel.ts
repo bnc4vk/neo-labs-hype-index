@@ -82,6 +82,16 @@ type TaskRunResultResponse = {
   };
 };
 
+type ParallelOutputSchema = {
+  type: "json";
+  json_schema: {
+    type: "object";
+    properties: Record<string, unknown>;
+    required: string[];
+    additionalProperties: boolean;
+  };
+};
+
 const OUTPUT_SCHEMA = {
   type: "json",
   json_schema: {
@@ -196,7 +206,7 @@ const OUTPUT_SCHEMA = {
     ],
     additionalProperties: false,
   },
-};
+} satisfies ParallelOutputSchema;
 
 const INPUT_SCHEMA = {
   type: "json",
@@ -214,7 +224,7 @@ const INPUT_SCHEMA = {
 
 const runParallelTaskGroup = async (
   companies: KnownCompany[],
-  outputSchema: typeof OUTPUT_SCHEMA,
+  outputSchema: ParallelOutputSchema,
 ): Promise<Map<string, ParallelTaskResult>> => {
   const apiKey = ensureApiKey();
   if (companies.length === 0) {
@@ -373,7 +383,7 @@ const VALUATION_OUTPUT_SCHEMA = {
     ],
     additionalProperties: false,
   },
-};
+} satisfies ParallelOutputSchema;
 
 export const runParallelValuationTasks = async (
   companies: KnownCompany[],

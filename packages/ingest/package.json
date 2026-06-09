@@ -11,6 +11,7 @@
     "ingest": "node --import tsx src/index.ts refresh",
     "ingest:bootstrap": "node --import tsx src/index.ts bootstrap",
     "ingest:refresh": "node --import tsx src/index.ts refresh",
+    "ingest:preflight": "node --import tsx src/preflight.ts",
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit"
   },

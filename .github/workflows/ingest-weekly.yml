@@ -30,5 +30,8 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma:generate
 
+      - name: Preflight database connection
+        run: pnpm ingest:preflight
+
       - name: Run ingestion
         run: pnpm ingest:refresh
