@@ -55,7 +55,7 @@
 - [x] Add public read-only policies for homepage data tables
 - [x] Keep `people` private from anonymous Supabase REST access
 - [x] Verify public homepage reads and blocked anonymous writes
-- [ ] Clean up defunct dedicated neo-lab Supabase project
+- [x] Clean up defunct dedicated neo-lab Supabase project
 
 ---
 
@@ -130,6 +130,9 @@
 - (2026-06-09) `supabase db push --workdir <temp> --yes` (applied RLS migration to shared project)
 - (2026-06-09) REST read checks against `companies` join, `sources`, and `funding_rounds` with publishable key (success)
 - (2026-06-09) REST anonymous insert check against `companies` with publishable key (blocked by RLS, `42501`)
+- (2026-06-09) `supabase projects delete bpopidliwibxwuofkloy --yes` (success; deleted `neo-lab-hype-index`)
+- (2026-06-09) `supabase link --project-ref bpopidliwibxwuofkloy` after deletion (confirmed resource removed)
+- (2026-06-09) `supabase projects list -o json` after deletion delay (confirmed old project no longer listed)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
@@ -146,3 +149,4 @@
 - Neo-lab data now lives in the active general-purpose Supabase project rather than the paused dedicated project.
 - The static webapp uses the active general-purpose project URL and publishable key.
 - Neo-lab Supabase REST access is read-only for homepage tables; anonymous writes are blocked by RLS.
+- The old dedicated Supabase project `bpopidliwibxwuofkloy` has been hard-deleted.
