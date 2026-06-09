@@ -9,7 +9,6 @@
     "test": "pnpm --filter ingest test",
     "ingest": "pnpm --filter ingest ingest",
     "ingest:bootstrap": "pnpm --filter ingest ingest:bootstrap",
-    "ingest:preflight": "pnpm --filter ingest ingest:preflight",
     "ingest:refresh": "pnpm --filter ingest ingest:refresh",
     "prisma:generate": "pnpm --filter db prisma generate",
     "prisma:migrate": "pnpm --filter db prisma migrate dev",

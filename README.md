@@ -34,7 +34,6 @@ pnpm prisma:generate
 
 ```bash
 pnpm ingest:bootstrap
-pnpm ingest:preflight
 pnpm ingest:refresh
 ```
 
@@ -61,7 +60,6 @@ Open `docs/index.html` directly in a browser, or serve the folder with a static 
 
 ## Ingestion
 - `pnpm ingest:bootstrap` reads `packages/ingest/seed-list.txt` and inserts/updates company rows by name only.
-- `pnpm ingest:preflight` validates required env vars, DNS, and database connectivity before a refresh run.
 - `pnpm ingest:refresh` (or `pnpm ingest`) runs the weekly refresh against Parallel Task API for companies already in Supabase.
 - Dynamic fields (`website_url`, `canonical_domain`, `employee_count`, `known_revenue`, `status`, `last_verified_at`) can be updated on each run.
 - Other fields are only filled when missing.
@@ -83,9 +81,3 @@ pnpm ingest:bootstrap
 A scheduled workflow runs weekly and executes `pnpm ingest:refresh` using repository secrets:
 - `DATABASE_URL`
 - `PARALLEL_API_KEY`
-
-The workflow runs `pnpm ingest:preflight` before ingestion so paused Supabase projects,
-stale pooler URLs, or rotated passwords fail with an actionable message before Parallel
-tasks are started. If Supabase reports `tenant/user ... not found`, restore the project
-from the Supabase dashboard and update `DATABASE_URL` from the current pooler connection
-string if needed.

@@ -9,8 +9,6 @@ We are NOT using the Supabase HTTP APIs (no SUPABASE_URL / service role key requ
 - DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB?sslmode=require
   - Postgres connection string for your Supabase project (prefer the pooler URL for CI).
   - Format: postgresql://USER:PASSWORD@HOST:PORT/DB?sslmode=require
-  - For Supabase pooler URLs, use the current dashboard-provided connection string.
-    A paused project can surface as `tenant/user ... not found` until it is restored.
 
 ### Provider (Parallel Task API)
 - PARALLEL_API_KEY=... (required for refresh runs)
@@ -40,9 +38,6 @@ Create a `.env` with at least:
 Add these repository secrets:
 - DATABASE_URL
 - PARALLEL_API_KEY
-
-The workflow validates `DATABASE_URL` with `pnpm ingest:preflight` before ingestion.
-If the project has been paused, restore it in Supabase and rerun the workflow.
 
 ---
 

@@ -41,12 +41,14 @@
 - [x] Update docs + workflow + env for Parallel-only flow
 - [x] Trim tests to bootstrap/refresh coverage only
 
-## Phase 6 — Weekly ingestion reliability
-- [x] Investigate June 2026 GitHub Actions failure
-- [x] Confirm failure occurs before Parallel calls during Prisma DB connection
-- [x] Add `pnpm ingest:preflight` for env, DNS, and database connectivity checks
-- [x] Run preflight before refresh in the weekly GitHub Actions workflow
-- [ ] Restore paused Supabase project and rerun GitHub Actions workflow
+## Phase 6 — General-purpose Supabase merge
+- [x] Identify active general-purpose Supabase project (`upmsuqgcepaoeanexaao`)
+- [x] Apply existing neo-lab Prisma migrations to the active general-purpose project
+- [x] Point static webapp config at the active general-purpose project
+- [x] Roll back paused-project preflight workaround
+- [x] Update GitHub `DATABASE_URL` to a durable Postgres connection string for the active general-purpose project
+- [x] Run bootstrap + refresh against the active general-purpose project
+- [ ] Rerun GitHub Actions weekly ingestion on remote `main`
 
 ---
 
@@ -106,16 +108,16 @@
 - (2026-02-25) `pnpm lint` (pass; workflow Prisma client generation fix verification)
 - (2026-02-25) `pnpm test` (pass; workflow Prisma client generation fix verification)
 - (2026-02-25) `pnpm build` (pass; workflow Prisma client generation fix verification)
-- (2026-06-09) `gh run view 27197818757 --log-failed` (confirmed Prisma DB connection failure: Supabase pooler tenant/user not found)
-- (2026-06-09) `supabase projects list -o json` (confirmed `neo-lab-hype-index` project exists but is `INACTIVE`)
-- (2026-06-09) `supabase link --project-ref bpopidliwibxwuofkloy` (failed: project is paused; restore required from Supabase dashboard)
-- (2026-06-09) `pnpm lint` (pass)
-- (2026-06-09) `pnpm test` (pass; added database preflight helper tests)
-- (2026-06-09) `pnpm build` (pass)
-- (2026-06-09) `pnpm ingest:preflight` (expected fail while Supabase is paused; reports unresolved Supabase DB host with restore guidance)
-- (2026-06-09) `pnpm --filter ingest lint` (pass; fixed valuation-only output schema typing)
-- (2026-06-09) Supabase Management API `POST /v1/projects/bpopidliwibxwuofkloy/restore` via local CLI keychain token (failed: token not accepted as API bearer token)
-- (2026-06-09) `gh workflow run ingest-weekly.yml --ref main` on commit `149b008` (expected fail at new preflight step while Supabase remains paused; ingestion step skipped)
+- (2026-06-09) `supabase projects list -o json` (identified active general-purpose project `upmsuqgcepaoeanexaao`)
+- (2026-06-09) `supabase link --project-ref upmsuqgcepaoeanexaao --debug` (success; CLI can connect via temporary login role)
+- (2026-06-09) `supabase db push --workdir <temp> --dry-run` (confirmed neo-lab migrations to apply)
+- (2026-06-09) `supabase db push --workdir <temp> --yes` (applied existing neo-lab Prisma migration SQL to active general-purpose project)
+- (2026-06-09) `curl ... https://upmsuqgcepaoeanexaao.supabase.co/rest/v1/companies?select=id,name&limit=1` (success; `companies` table exists and is readable)
+- (2026-06-09) `gh secret set DATABASE_URL --body <redacted>` (updated CI to active general-purpose project pooler URL)
+- (2026-06-09) `DATABASE_URL=<redacted> pnpm ingest:bootstrap` (success; created 21 seed companies)
+- (2026-06-09) `DATABASE_URL=<redacted> pnpm ingest:refresh` (success; updated=21 failed=0)
+- (2026-06-09) REST checks against active project for `companies`, `sources`, and `funding_rounds` (success; all returned non-empty results)
+- (2026-06-09) `pnpm ingest:bootstrap` after ignored local `.env` update (success; created=0 updated=21)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
@@ -129,5 +131,5 @@
 - GitHub Actions should not also pin `pnpm/action-setup` `version` when `package.json` already pins `packageManager`; use one source of truth to avoid `ERR_PNPM_BAD_PM_VERSION`.
 - Root `package.json` must expose `ingest:bootstrap` and `ingest:refresh` aliases because README and CI invoke those script names at the workspace root.
 - GitHub Actions must run `pnpm prisma:generate` after install and before ingestion so `@prisma/client` has generated runtime files (`.prisma/client/*`) in CI.
-- Weekly ingestion now runs a database preflight before calling Parallel so paused Supabase projects or stale pooler secrets fail fast with an actionable message.
-- The June 2026 workflow failure is caused by the Supabase project being paused (`INACTIVE`), not by ingestion code or Parallel API behavior.
+- Neo-lab data now lives in the active general-purpose Supabase project rather than the paused dedicated project.
+- The static webapp uses the active general-purpose project URL and publishable key.
