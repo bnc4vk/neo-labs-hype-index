@@ -50,6 +50,13 @@
 - [x] Run bootstrap + refresh against the active general-purpose project
 - [x] Rerun GitHub Actions weekly ingestion on remote `main`
 
+## Phase 7 — Shared Supabase hardening
+- [x] Enable RLS on neo-lab tables in the shared Supabase project
+- [x] Add public read-only policies for homepage data tables
+- [x] Keep `people` private from anonymous Supabase REST access
+- [x] Verify public homepage reads and blocked anonymous writes
+- [ ] Clean up defunct dedicated neo-lab Supabase project
+
 ---
 
 ## Commands run
@@ -119,6 +126,10 @@
 - (2026-06-09) REST checks against active project for `companies`, `sources`, and `funding_rounds` (success; all returned non-empty results)
 - (2026-06-09) `pnpm ingest:bootstrap` after ignored local `.env` update (success; created=0 updated=21)
 - (2026-06-09) `gh workflow run ingest-weekly.yml --ref main` on commit `26a6ffe` (success)
+- (2026-06-09) `supabase db push --workdir <temp> --dry-run` (confirmed RLS migration to apply)
+- (2026-06-09) `supabase db push --workdir <temp> --yes` (applied RLS migration to shared project)
+- (2026-06-09) REST read checks against `companies` join, `sources`, and `funding_rounds` with publishable key (success)
+- (2026-06-09) REST anonymous insert check against `companies` with publishable key (blocked by RLS, `42501`)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
@@ -134,3 +145,4 @@
 - GitHub Actions must run `pnpm prisma:generate` after install and before ingestion so `@prisma/client` has generated runtime files (`.prisma/client/*`) in CI.
 - Neo-lab data now lives in the active general-purpose Supabase project rather than the paused dedicated project.
 - The static webapp uses the active general-purpose project URL and publishable key.
+- Neo-lab Supabase REST access is read-only for homepage tables; anonymous writes are blocked by RLS.
