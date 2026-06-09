@@ -115,6 +115,7 @@
 - (2026-06-09) `pnpm ingest:preflight` (expected fail while Supabase is paused; reports unresolved Supabase DB host with restore guidance)
 - (2026-06-09) `pnpm --filter ingest lint` (pass; fixed valuation-only output schema typing)
 - (2026-06-09) Supabase Management API `POST /v1/projects/bpopidliwibxwuofkloy/restore` via local CLI keychain token (failed: token not accepted as API bearer token)
+- (2026-06-09) `gh workflow run ingest-weekly.yml --ref main` on commit `149b008` (expected fail at new preflight step while Supabase remains paused; ingestion step skipped)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.

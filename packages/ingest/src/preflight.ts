@@ -1,6 +1,6 @@
 import { lookup } from "dns/promises";
 import { fileURLToPath } from "url";
-import { prisma } from "@neolabs/db";
+import { PrismaClient } from "@neolabs/db";
 import { loadDotEnv, requireEnv } from "./lib/env";
 
 type DatabaseUrlSummary = {
@@ -91,7 +91,12 @@ const main = async () => {
       .join(", ")}`,
   );
 
-  await prisma.$queryRaw`select 1`;
+  const prisma = new PrismaClient({ log: [] });
+  try {
+    await prisma.$queryRaw`select 1`;
+  } finally {
+    await prisma.$disconnect();
+  }
   console.log("[preflight] database connection ok");
 };
 
@@ -105,7 +110,4 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       }
       process.exitCode = 1;
     })
-    .finally(async () => {
-      await prisma.$disconnect();
-    });
 }
