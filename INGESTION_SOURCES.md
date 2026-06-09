@@ -4,8 +4,8 @@ This file defines the only approved data procurement path for the ingestion scri
 
 ## Current policy (Parallel-only)
 - **Single provider:** Parallel Task API.
-- **No direct scraping by our code.**
-- **No RSS / discovery / allowlist logic.**
+- **No provider-bypass fetching by our code.**
+- **No secondary discovery pipeline.**
 - **All fields are best-effort.** If the provider cannot determine a field confidently, it should return `null`.
 
 ## Operations

@@ -6,7 +6,7 @@ You are an autonomous coding agent working inside this repository. Follow these 
 - Treat `SPEC.md` and `DATA_MODEL.md` as source-of-truth.
 - Do **not** change `DATA_MODEL.md` without explicit instruction.
 - Do **not** delete or rewrite migrations; only add new migrations if needed.
-- Respect `INGESTION_SOURCES.md` (allowlist/denylist + fetch policy). Never fetch/scrape outside it.
+- Respect `INGESTION_SOURCES.md` (approved provider + fetch policy). Never fetch/scrape outside it.
 - No manual seed data. The ingestion script is the only data population mechanism.
 
 ## 1) How to work (Codex App behavior)
@@ -52,10 +52,8 @@ You are an autonomous coding agent working inside this repository. Follow these 
 - `company_sources` (NO `field_key`; unique `(company_id, source_id, source_kind)`)
 
 ## 5) Ingestion rules
-- Follow priority order:
-  1) RSS feeds / official sources
-  2) Search API fallback (as configured)
-  3) Direct scraping only when explicitly allowed
+- Use the Parallel Task API as the only refresh data provider.
+- Do not add alternate discovery providers or provider-bypass fetching unless `INGESTION_SOURCES.md` is explicitly changed first.
 - Do not store full article text. Store only source metadata defined in `DATA_MODEL.md`.
 - Implement best-effort quality + dedupe:
   - avoid duplicate sources by URL normalization

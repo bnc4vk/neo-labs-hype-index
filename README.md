@@ -14,8 +14,6 @@ pnpm install
 ```bash
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB?sslmode=require
 PARALLEL_API_KEY=your_parallel_key
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
 3. Run Prisma migrations
@@ -50,8 +48,8 @@ Open `docs/index.html` directly in a browser, or serve the folder with a static 
 - `PARALLEL_POLL_INTERVAL_MS`: polling interval (default 4000).
 - `PARALLEL_MAX_POLL_ATTEMPTS`: max poll attempts (default 20).
 - `INGEST_MODE`: `bootstrap` | `refresh` (defaults to refresh).
-- `SUPABASE_URL`: Supabase project URL for the static site.
-- `SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key for the static site.
+
+Static webapp Supabase config is committed in `docs/config.js` because it uses only public read access protected by RLS. Do not add service-role keys to frontend config.
 
 ## Prisma commands
 - `pnpm prisma:migrate` — apply migrations.

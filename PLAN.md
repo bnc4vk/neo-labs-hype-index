@@ -1,152 +1,31 @@
 # Plan
 
-## Phase 0 — Repo scaffold (Next.js + TS + Tailwind + pnpm)
-- [x] Choose repo layout (apps/web + packages/db + packages/ingest)
-- [x] Scaffold Next.js App Router + TypeScript + Tailwind (manual setup)
-- [x] Add base README with setup, env vars, migrations, ingestion, and GitHub Actions schedule
+## Current Status
+- [x] Static homepage in `docs` reads from Supabase REST with a publishable key.
+- [x] Prisma schema and migrations match `DATA_MODEL.md`.
+- [x] Ingestion is Parallel-only: bootstrap seeds company names; refresh updates known companies.
+- [x] Weekly GitHub Action runs `pnpm ingest:refresh`.
+- [x] Neo-lab data lives in the shared Supabase project.
+- [x] RLS is enabled for neo-lab tables; anonymous access is read-only for homepage data.
+- [x] Deep-clean stale docs, unused provider code, and generated artifacts.
 
-## Phase 1 — Prisma schema + migrations (match DATA_MODEL.md exactly)
-- [x] Add Prisma schema that mirrors DATA_MODEL.md
-- [x] Create initial migration(s) without altering locked tables
-- [x] Add DB client wrapper
+## Commands Run
+- (2026-06-09) `git status --short --branch`
+- (2026-06-09) `rg ...` audit for stale project, provider, and workflow references
+- (2026-06-09) `find apps -maxdepth 3 -type f -print`
+- (2026-06-09) `find packages/ingest/artifacts -maxdepth 2 -type f -print`
+- (2026-06-09) `rg -n ...` audit for unused provider clients
+- (2026-06-09) `rm -rf apps packages/ingest/artifacts packages/ingest/src/lib/llm`
+- (2026-06-09) `git grep -n -E ...` stale-reference audit
+- (2026-06-09) `pnpm lint` (pass)
+- (2026-06-09) `pnpm --filter ingest lint` (pass)
+- (2026-06-09) `pnpm test` (pass)
+- (2026-06-09) `pnpm build` (pass)
+- (2026-06-09) Supabase REST smoke test using `docs/config.js` (pass; returned one company row)
 
-## Phase 2 — Ingestion script (RSS first, Tavily fallback, allow/deny list, dedupe + idempotent upserts)
-- [x] Implement RSS discovery for listed feeds
-- [x] Implement press-page discovery (URL collection only)
-- [x] Implement allowlist/denylist fetch policy
-- [x] Implement Tavily search fallback (gated by env and policy)
-- [x] Implement normalization + dedupe rules per DATA_MODEL.md
-- [x] Implement idempotent upserts for companies, people, funding_rounds, sources, company_sources
-- [x] Add `pnpm ingest` command
-
-## Phase 3 — Webapp homepage
-- [x] Homepage table of companies from DB
-- [x] “Sources” section per SPEC.md policy decision
-- [x] Contact card per SPEC.md copy
-- [x] Show data freshness (last_verified_at or last updated)
-- [x] Minimal styling polish
-
-## Phase 4 — Automation + tests + quality gates
-- [x] GitHub Actions workflow to run ingestion weekly
-- [x] Minimal tests: normalization/parsing unit tests
-- [x] Minimal tests: ingestion idempotency smoke test
-- [x] Ensure `pnpm lint`, `pnpm test`, `pnpm build` pass
-
-## Phase 5 — Parallel-only redesign (Bootstrap + Weekly Refresh)
-- [x] Commit/push checkpoint on main before redesign
-- [x] Confirm new operating model: bootstrap seed list, weekly refresh on existing companies
-- [x] Remove RSS/discovery/heuristics and allowlist logic (retain Tavily/Mistral client code only)
-- [x] Implement bootstrap script (seed list -> company rows only)
-- [x] Implement weekly refresh script (Parallel Task API -> best-effort column refresh + sources)
-- [x] Update docs + workflow + env for Parallel-only flow
-- [x] Trim tests to bootstrap/refresh coverage only
-
-## Phase 6 — General-purpose Supabase merge
-- [x] Identify active general-purpose Supabase project (`upmsuqgcepaoeanexaao`)
-- [x] Apply existing neo-lab Prisma migrations to the active general-purpose project
-- [x] Point static webapp config at the active general-purpose project
-- [x] Roll back paused-project preflight workaround
-- [x] Update GitHub `DATABASE_URL` to a durable Postgres connection string for the active general-purpose project
-- [x] Run bootstrap + refresh against the active general-purpose project
-- [x] Rerun GitHub Actions weekly ingestion on remote `main`
-
-## Phase 7 — Shared Supabase hardening
-- [x] Enable RLS on neo-lab tables in the shared Supabase project
-- [x] Add public read-only policies for homepage data tables
-- [x] Keep `people` private from anonymous Supabase REST access
-- [x] Verify public homepage reads and blocked anonymous writes
-- [x] Clean up defunct dedicated neo-lab Supabase project
-
----
-
-## Commands run
-- `node -v`
-- `npm install -g pnpm`
-- `pnpm -v`
-- `pnpm dlx create-next-app@latest apps/web --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-pnpm --no-git` (failed: network ENOTFOUND)
-- `pnpm install` (failed: network ENOTFOUND to registry.npmjs.org)
-- `pnpm lint` (failed: missing node_modules / next not found)
-- `pnpm test` (failed: missing node_modules / vitest not found)
-- `pnpm build` (failed: missing node_modules / next not found)
-- `pnpm prisma:migrate` (failed: schema engine error; likely missing Prisma engines/builds in sandbox)
-- `DEBUG="*" pnpm --filter db prisma migrate dev --schema prisma/schema.prisma --create-only --skip-generate --skip-seed` (failed: schema engine error)
-- (User local) `pnpm ingest` (success; 7 companies created; VentureBeat RSS 404s)
-- `pnpm ingest` (sandbox: runs but network fetch fails; switched ingest runner away from `tsx` CLI to avoid `EPERM` IPC socket error)
-- (2026-02-03) `pnpm ingest` (sandbox: command succeeds; all HTTP fetches fail; 0 candidates prepared)
-- (2026-02-03) `pnpm ingest` retry (sandbox: same outcome; all HTTP fetches fail; 0 candidates prepared)
-- (2026-02-03) `pnpm lint` (sandbox: fails; `next lint` tries to auto-install `@types/react` + `@types/node`; pnpm store mismatch with existing `node_modules`)
-- `pnpm test` (sandbox: pass)
-- (2026-02-03) `pnpm ingest` (network-enabled: RSS/discovery fetch works; 4 companies created, 1 updated; VentureBeat RSS fetch fails; one VentureBeat URL 429)
-- (2026-02-03) `pnpm ingest` (rerun: idempotent; 0 companies created, 5 updated)
-- (2026-02-03) `node - <<'NODE' ... deleteMany` (purged company_sources, funding_rounds, people, companies, sources)
-- (2026-02-03) `INGEST_DRY_RUN=1 INGEST_LOOKBACK_DAYS=365 INGEST_FORCE_SEARCH=1 INGEST_TAVILY_TOPIC=general INGEST_TAVILY_DEPTH=advanced INGEST_TAVILY_MAX_RESULTS=10 pnpm ingest` (dry-run compare; best match reached 50%)
-- (2026-02-03) `pnpm install` (refreshed node_modules)
-- (2026-02-03) `pnpm lint` (pass; Next.js updated `apps/web/tsconfig.json`)
-- (2026-02-03) `pnpm test` (pass)
-- (2026-02-03) `pnpm build` (pass; warning about `serverExternalPackages` in `next.config.mjs`)
-- (2026-02-04) `INGEST_DRY_RUN=1 INGEST_LOOKBACK_DAYS=365 INGEST_FORCE_SEARCH=1 pnpm ingest` (dry-run compare; match rate 9%, weighted match rate 8%)
-- (2026-02-04) `pnpm lint` (pass)
-- (2026-02-04) `pnpm test` (pass; added benchmark tests)
-- (2026-02-04) `pnpm build` (pass; warning about `serverExternalPackages` in `next.config.mjs`)
-- (2026-02-04) `pnpm install` (dependency prune for ingest redesign)
-- (2026-02-04) `pnpm --filter ingest lint` (pass)
-- (2026-02-04) `pnpm lint` (pass)
-- (2026-02-04) `pnpm test` (pass; redesigned tests)
-- (2026-02-04) `pnpm build` (pass; warning about `serverExternalPackages` in `next.config.mjs`)
-- (2026-02-04) `INGEST_PROFILE=benchmark INGEST_SEED_MODE=bootstrap ENTITY_RESOLUTION_MODE=llm pnpm ingest` (populated Supabase; report in `packages/ingest/artifacts/ingest-report-bootstrap.json`)
-- (2026-02-04) `INGEST_DRY_RUN=1 INGEST_PROFILE=benchmark INGEST_FORCE_SEARCH=1 ENTITY_RESOLUTION_MODE=llm pnpm ingest` (compare; report in `packages/ingest/artifacts/report-llm.json`)
-- (2026-02-04) `INGEST_DRY_RUN=1 INGEST_PROFILE=benchmark INGEST_FORCE_SEARCH=1 ENTITY_RESOLUTION_MODE=hybrid pnpm ingest` (compare; report in `packages/ingest/artifacts/report-hybrid.json`)
-- (2026-02-04) `INGEST_PROFILE=weekly INGEST_FORCE_SEARCH=1 ENTITY_RESOLUTION_MODE=hybrid INGEST_KNOWN_MAX=30 pnpm ingest` (weekly run; report in `packages/ingest/artifacts/weekly-report.json`)
-- (2026-02-04) `pnpm --filter ingest lint` (pass; fixed `tsconfig.json` rootDir and added `@types/node`)
-- (2026-02-04) `node --input-type=module ... prisma.*.deleteMany` (cleared Supabase tables: companies/sources/company_sources/people/funding_rounds)
-- (2026-02-04) `pnpm lint` (pass)
-- (2026-02-04) `pnpm test` (pass; added seed tests + LLM plumbing)
-- (2026-02-04) `pnpm build` (pass; warning about `serverExternalPackages` in `next.config.mjs`)
-- (2026-02-25) `pnpm lint` (pass; workflow fix verification)
-- (2026-02-25) `pnpm test` (pass; workflow fix verification)
-- (2026-02-25) `pnpm build` (pass; workflow fix verification)
-- (2026-02-25) `pnpm lint` (pass; workflow pnpm-version conflict fix verification)
-- (2026-02-25) `pnpm test` (pass; workflow pnpm-version conflict fix verification)
-- (2026-02-25) `pnpm build` (pass; workflow pnpm-version conflict fix verification)
-- (2026-02-25) `pnpm lint` (pass; root ingest script alias fix verification)
-- (2026-02-25) `pnpm test` (pass; root ingest script alias fix verification)
-- (2026-02-25) `pnpm build` (pass; root ingest script alias fix verification)
-- (2026-02-25) `pnpm prisma:generate` (pass; workflow Prisma client generation fix verification)
-- (2026-02-25) `pnpm lint` (pass; workflow Prisma client generation fix verification)
-- (2026-02-25) `pnpm test` (pass; workflow Prisma client generation fix verification)
-- (2026-02-25) `pnpm build` (pass; workflow Prisma client generation fix verification)
-- (2026-06-09) `supabase projects list -o json` (identified active general-purpose project `upmsuqgcepaoeanexaao`)
-- (2026-06-09) `supabase link --project-ref upmsuqgcepaoeanexaao --debug` (success; CLI can connect via temporary login role)
-- (2026-06-09) `supabase db push --workdir <temp> --dry-run` (confirmed neo-lab migrations to apply)
-- (2026-06-09) `supabase db push --workdir <temp> --yes` (applied existing neo-lab Prisma migration SQL to active general-purpose project)
-- (2026-06-09) `curl ... https://upmsuqgcepaoeanexaao.supabase.co/rest/v1/companies?select=id,name&limit=1` (success; `companies` table exists and is readable)
-- (2026-06-09) `gh secret set DATABASE_URL --body <redacted>` (updated CI to active general-purpose project pooler URL)
-- (2026-06-09) `DATABASE_URL=<redacted> pnpm ingest:bootstrap` (success; created 21 seed companies)
-- (2026-06-09) `DATABASE_URL=<redacted> pnpm ingest:refresh` (success; updated=21 failed=0)
-- (2026-06-09) REST checks against active project for `companies`, `sources`, and `funding_rounds` (success; all returned non-empty results)
-- (2026-06-09) `pnpm ingest:bootstrap` after ignored local `.env` update (success; created=0 updated=21)
-- (2026-06-09) `gh workflow run ingest-weekly.yml --ref main` on commit `26a6ffe` (success)
-- (2026-06-09) `supabase db push --workdir <temp> --dry-run` (confirmed RLS migration to apply)
-- (2026-06-09) `supabase db push --workdir <temp> --yes` (applied RLS migration to shared project)
-- (2026-06-09) REST read checks against `companies` join, `sources`, and `funding_rounds` with publishable key (success)
-- (2026-06-09) REST anonymous insert check against `companies` with publishable key (blocked by RLS, `42501`)
-- (2026-06-09) `supabase projects delete bpopidliwibxwuofkloy --yes` (success; deleted `neo-lab-hype-index`)
-- (2026-06-09) `supabase link --project-ref bpopidliwibxwuofkloy` after deletion (confirmed resource removed)
-- (2026-06-09) `supabase projects list -o json` after deletion delay (confirmed old project no longer listed)
-
-## Key decisions
-- Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
-- Prisma schema uses `@unique` on `canonical_domain` (Postgres unique allows multiple nulls).
-- Ingestion is now Parallel-only: bootstrap inserts seed list (no web calls), weekly refresh calls Parallel Task API for best-effort column updates.
-- Dynamic fields (`website_url`, `canonical_domain`, `employee_count`, `known_revenue`, `status`, `last_verified_at`) can be overwritten; other fields only fill when missing.
-- Sources returned by Parallel are stored in `sources` and linked via `company_sources` to keep the homepage “Sources” section populated.
-- Frontend converted to a static HTML/CSS/JS bundle (`docs`) that reads from Supabase REST with a publishable key.
-- When starting a temporary local server for UI review (e.g. `python3 -m http.server 3000`), always terminate it after capturing screenshots to avoid keeping port `3000` occupied.
-- GitHub Actions must install `pnpm` before `actions/setup-node` when using `cache: "pnpm"`; otherwise setup-node fails because `pnpm` is not yet on `PATH`.
-- GitHub Actions should not also pin `pnpm/action-setup` `version` when `package.json` already pins `packageManager`; use one source of truth to avoid `ERR_PNPM_BAD_PM_VERSION`.
-- Root `package.json` must expose `ingest:bootstrap` and `ingest:refresh` aliases because README and CI invoke those script names at the workspace root.
-- GitHub Actions must run `pnpm prisma:generate` after install and before ingestion so `@prisma/client` has generated runtime files (`.prisma/client/*`) in CI.
-- Neo-lab data now lives in the active general-purpose Supabase project rather than the paused dedicated project.
-- The static webapp uses the active general-purpose project URL and publishable key.
-- Neo-lab Supabase REST access is read-only for homepage tables; anonymous writes are blocked by RLS.
-- The old dedicated Supabase project `bpopidliwibxwuofkloy` has been hard-deleted.
+## Key Decisions
+- The shared Supabase project is the only active persistence target.
+- Static public reads are allowed only through RLS `SELECT` policies on homepage tables.
+- Ingestion uses direct Prisma/Postgres credentials and runs via local scripts or GitHub Actions.
+- Parallel Task API is the only ingestion provider.
+- Historical generated artifacts are not part of the maintained source tree.

@@ -1,7 +1,7 @@
 # Environment Variables (ENV.md)
 
-This repo uses Prisma to connect directly to the Supabase-hosted Postgres database.
-We are NOT using the Supabase HTTP APIs (no SUPABASE_URL / service role key required).
+Ingestion uses Prisma to connect directly to the Supabase-hosted Postgres database.
+The static webapp uses Supabase REST with a publishable key committed in `docs/config.js`.
 
 ## Required (local dev + CI)
 
@@ -12,10 +12,6 @@ We are NOT using the Supabase HTTP APIs (no SUPABASE_URL / service role key requ
 
 ### Provider (Parallel Task API)
 - PARALLEL_API_KEY=... (required for refresh runs)
-
-### Supabase (static webapp)
-- SUPABASE_URL=https://your-project.supabase.co
-- SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 
 ## Optional
 - PARALLEL_BASE_URL=https://api.parallel.ai
@@ -43,4 +39,5 @@ Add these repository secrets:
 
 ## Notes
 - Never commit DATABASE_URL or PARALLEL_API_KEY.
+- Never expose a Supabase service-role key in frontend code.
 - Bootstrap does not require PARALLEL_API_KEY because it does not call the provider.
