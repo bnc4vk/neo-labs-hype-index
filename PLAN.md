@@ -5,6 +5,7 @@
 - [x] Prisma schema and migrations match `DATA_MODEL.md`.
 - [x] Ingestion is Parallel-only: bootstrap seeds company names; refresh updates known companies.
 - [x] Weekly GitHub Action runs `pnpm ingest:refresh`.
+- [x] Weekly GitHub Action commits a successful-run heartbeat after ingestion succeeds.
 - [x] Neo-lab data lives in the shared Supabase project.
 - [x] RLS is enabled for neo-lab tables; anonymous access is read-only for homepage data.
 - [x] Deep-clean stale docs, unused provider code, and generated artifacts.
@@ -22,6 +23,11 @@
 - (2026-06-09) `pnpm test` (pass)
 - (2026-06-09) `pnpm build` (pass)
 - (2026-06-09) Supabase REST smoke test using `docs/config.js` (pass; returned one company row)
+- (2026-06-09) `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ingest-weekly.yml"); puts "workflow yaml ok"'` (pass; workflow YAML parses)
+- (2026-06-09) local temp-git heartbeat simulation (pass; writes valid heartbeat JSON, commits with `github-actions[bot]`, and pushes `HEAD:${GITHUB_REF_NAME}`)
+- (2026-06-09) `pnpm lint` (pass; heartbeat workflow change verification)
+- (2026-06-09) `pnpm test` (pass; 3 test files / 5 tests)
+- (2026-06-09) `pnpm build` (pass; static files present)
 
 ## Key Decisions
 - The shared Supabase project is the only active persistence target.
@@ -29,3 +35,4 @@
 - Ingestion uses direct Prisma/Postgres credentials and runs via local scripts or GitHub Actions.
 - Parallel Task API is the only ingestion provider.
 - Historical generated artifacts are not part of the maintained source tree.
+- The weekly ingestion workflow records `.github/heartbeat/weekly-ingestion.json` only after a successful refresh, then commits it with `github-actions[bot]`.
