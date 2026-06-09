@@ -48,7 +48,7 @@
 - [x] Roll back paused-project preflight workaround
 - [x] Update GitHub `DATABASE_URL` to a durable Postgres connection string for the active general-purpose project
 - [x] Run bootstrap + refresh against the active general-purpose project
-- [ ] Rerun GitHub Actions weekly ingestion on remote `main`
+- [x] Rerun GitHub Actions weekly ingestion on remote `main`
 
 ---
 
@@ -118,6 +118,7 @@
 - (2026-06-09) `DATABASE_URL=<redacted> pnpm ingest:refresh` (success; updated=21 failed=0)
 - (2026-06-09) REST checks against active project for `companies`, `sources`, and `funding_rounds` (success; all returned non-empty results)
 - (2026-06-09) `pnpm ingest:bootstrap` after ignored local `.env` update (success; created=0 updated=21)
+- (2026-06-09) `gh workflow run ingest-weekly.yml --ref main` on commit `26a6ffe` (success)
 
 ## Key decisions
 - Monorepo layout: `apps/web`, `packages/db`, `packages/ingest`.
