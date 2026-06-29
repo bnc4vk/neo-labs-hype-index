@@ -1,8 +1,8 @@
 {
   "workflow": "Weekly Ingestion",
-  "last_success_at": "2026-06-22T14:54:36.520Z",
-  "run_id": "27960976595",
-  "run_number": "26",
+  "last_success_at": "2026-06-29T13:20:19.007Z",
+  "run_id": "28374327972",
+  "run_number": "27",
   "ref_name": "main",
-  "sha": "e40ffa4742b72684b2bfcfa66cb5d912b75be5bd"
+  "sha": "1fd28974a0fa8dcd3924d48836a0bc534f1306a7"
 }
